@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from "next/server";import{authorizeRequest}from"@/lib/auth/session";import{evaluationErrorResponse}from"@/lib/evaluation/http";import{authorizeReopening}from"@/lib/corrections/service";
+export const runtime="nodejs";
+export async function POST(request:NextRequest,context:{params:Promise<{appraisalId:string}>}){try{const p=await authorizeRequest(request,"appraisal.correction_authorize");const{appraisalId}=await context.params;const body=await request.json();return NextResponse.json({success:true,authorization:await authorizeReopening(p.tenantId,p.accountId,appraisalId,body)},{status:201});}catch(e){return evaluationErrorResponse(e);}}

@@ -6,7 +6,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
+    "acceptance:smoke": "node scripts/acceptance-smoke.mjs"
   },
   "dependencies": {
     "dotenv": "17.3.1",

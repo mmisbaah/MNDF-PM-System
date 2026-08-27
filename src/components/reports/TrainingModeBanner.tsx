@@ -1,0 +1,1 @@
+export function TrainingModeBanner(){return <aside role="status" className="border-b border-amber-400/40 bg-amber-950 px-4 py-3 text-center text-sm font-semibold text-amber-100">Training mode - December 2026 onboarding data is isolated and excluded from 2027 production reports.</aside>}

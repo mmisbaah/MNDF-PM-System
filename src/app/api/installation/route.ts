@@ -1,0 +1,3 @@
+import{NextResponse}from"next/server";import{pool}from"@/db";
+export const runtime="nodejs";
+export async function GET(){try{const result=await pool.query("SELECT * FROM read_installation_identity()");const row=result.rows[0]??{configured:false,installation_status:"UNCONFIGURED",organization_name:null,organization_code:null};return NextResponse.json({success:true,installation:{configured:row.configured,status:row.installation_status,organizationName:row.organization_name,organizationCode:row.organization_code}},{headers:{"Cache-Control":"no-store"}})}catch{return NextResponse.json({success:false,error:"Installation status is unavailable"},{status:503})}}

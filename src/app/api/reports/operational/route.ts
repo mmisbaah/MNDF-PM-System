@@ -1,0 +1,2 @@
+import{NextRequest,NextResponse}from"next/server";import{authorizeRequest}from"@/lib/auth/session";import{evaluationErrorResponse}from"@/lib/evaluation/http";import{createOperationalReport}from"@/lib/reports/service";
+export const runtime="nodejs";export async function POST(r:NextRequest){try{const p=await authorizeRequest(r,"appraisal.comment");return NextResponse.json({success:true,report:await createOperationalReport(p.tenantId,p.accountId,await r.json())},{status:201});}catch(e){return evaluationErrorResponse(e);}}

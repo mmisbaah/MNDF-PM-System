@@ -1,28 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MNDF MDU | Performance Management System",
+  title: "Performance Tracker",
   description:
-    "Maldives National Defence Force Marine Deployment Unit Performance Evaluation & Administration System with Al-'Adl Safeguards",
+    "A secure, organization-isolated performance tracking system",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MNDF PDS",
+    title: "Performance Tracker",
   },
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
-  applicationName: "MNDF MDU PDS",
+  applicationName: "Performance Tracker",
   keywords: [
-    "MNDF",
-    "Marine Deployment Unit",
-    "Military Performance",
-    "Maldives National Defence Force",
-    "Al-Adl Safeguard",
+    "Performance Tracker",
+    "Organizational performance",
+    "Performance management",
+    "Secure appraisal",
   ],
 };
 
@@ -39,6 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="bg-slate-950 text-slate-100 antialiased min-h-screen selection:bg-cyan-500 selection:text-slate-950">
+        <ServiceWorkerRegistration />
         {children}
       </body>
     </html>

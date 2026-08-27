@@ -1,12 +1,15 @@
 {
-  "name": "MNDF MDU Performance Management System",
-  "short_name": "MNDF PDS",
-  "description": "Comprehensive Performance Management System for Maldives National Defence Force Marine Deployment Unit",
+  "name": "Performance Tracker",
+  "short_name": "Performance Tracker",
+  "description": "Secure organizational performance tracking for the pilot program",
   "start_url": "/",
+  "id": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#1e3a5f",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/icon.svg",

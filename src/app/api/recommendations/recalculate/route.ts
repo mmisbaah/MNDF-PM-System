@@ -1,0 +1,2 @@
+import{NextRequest,NextResponse}from"next/server";import{authorizeRequest}from"@/lib/auth/session";import{evaluationErrorResponse}from"@/lib/evaluation/http";import{recalculateEligibility}from"@/lib/recommendations/service";
+export async function POST(r:NextRequest){try{const p=await authorizeRequest(r,"personnel.manage");const b=await r.json() as{personnelId:string};return NextResponse.json({success:true,recommendations:await recalculateEligibility(p.tenantId,p.accountId,b.personnelId)});}catch(e){return evaluationErrorResponse(e);}}

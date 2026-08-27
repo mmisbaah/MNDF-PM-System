@@ -1,0 +1,4 @@
+{
+  "compilerOptions":{"target":"ES2022","module":"CommonJS","moduleResolution":"Node","esModuleInterop":true,"strict":true,"skipLibCheck":true,"outDir":".test-dist","rootDir":"."},
+  "include":["tests/**/*.ts","src/lib/evaluation/score.ts","src/lib/evaluation/chain-engine.ts","src/lib/evaluation/evidence.ts","src/lib/evaluation/errors.ts","src/lib/auth/rbac.ts","src/lib/auth/types.ts"]
+}

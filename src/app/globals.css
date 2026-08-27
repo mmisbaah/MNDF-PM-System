@@ -10,6 +10,31 @@
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+    overflow-x: hidden;
+  }
+  label {
+    min-width: 0;
+  }
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+  }
+  nav a,
+  nav button,
+  [data-touch-target] {
+    min-width: 48px;
+    min-height: 48px;
+  }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid #22d3ee;
+    outline-offset: 2px;
   }
 }
 

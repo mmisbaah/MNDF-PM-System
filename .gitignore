@@ -1,0 +1,18 @@
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+*.log
+.test-dist/
+.verification-backups/
+backups/
+output/
+tmp/
+
+# Local evidence objects and generated exports must not be committed.
+storage/

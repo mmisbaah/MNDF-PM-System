@@ -1,0 +1,2 @@
+import{NextRequest,NextResponse}from"next/server";import{authenticateRequest}from"@/lib/auth/session";import{evaluationErrorResponse}from"@/lib/evaluation/http";import{getOperationalReport}from"@/lib/reports/service";
+export async function GET(r:NextRequest,c:{params:Promise<{reportId:string}>}){try{const p=await authenticateRequest(r);const{reportId}=await c.params;return NextResponse.json({success:true,report:await getOperationalReport(p.tenantId,p.accountId,reportId)});}catch(e){return evaluationErrorResponse(e);}}
