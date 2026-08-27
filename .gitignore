@@ -11,6 +11,7 @@ coverage/
 .test-dist/
 .verification-backups/
 backups/
+backup-keys/
 output/
 tmp/
 
