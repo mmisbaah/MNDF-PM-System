@@ -12,6 +12,7 @@ coverage/
 .verification-backups/
 backups/
 backup-keys/
+audit-exports/
 output/
 tmp/
 

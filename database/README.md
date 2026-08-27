@@ -34,7 +34,7 @@ Do not use a connection-level `SET` with a pooled connection. Use `SET LOCAL` in
 - An appraisal cannot progress to commander approval while related evidence has a malware status other than `CLEAN`.
 - Template rows become immutable after a linked cycle leaves `DRAFT`.
 - Confirmed activity versions are immutable; corrections create a new version.
-- `audit_logs` is append-only. Production should additionally export audit events to separately controlled storage and add hash-chain signing.
+- `audit_logs` is append-only and sealed with a serialized per-tenant SHA-256 chain. Production must run the encrypted, HMAC-signed off-host export described in `docs/AUDIT_LEDGER_RETENTION.md`.
 - Permanent tenant deletion requires two recent, unrevoked authorizations from distinct accounts: the company commander and executive officer (the pilot's mapped second-tier deletion authority).
 - Restricted comments are available only through `read_restricted_comments_for_complaint`, after complaint acceptance, to the first sergeant, executive officer, company commander, or an active case-specific officer. Grant the runtime role `EXECUTE` on this function but no direct `SELECT` privilege on restricted comment data.
 - Authentication uses 15-minute signed access JWTs in HttpOnly cookies and rotating, server-stored seven-day refresh sessions.

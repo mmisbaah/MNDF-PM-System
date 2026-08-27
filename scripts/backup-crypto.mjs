@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, generateKeyPairSync, privateDecrypt, publicEncrypt, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, generateKeyPairSync, privateDecrypt, publicEncrypt, randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { access, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
@@ -8,7 +8,7 @@ const IV_BYTES = 12;
 const TAG_BYTES = 16;
 
 function usage() {
-  throw new Error("Usage: backup-crypto.mjs keygen|encrypt|decrypt [arguments]");
+  throw new Error("Usage: backup-crypto.mjs keygen|encrypt|decrypt|hmac|verify-hmac [arguments]");
 }
 
 async function assertAbsent(path) {
@@ -109,8 +109,28 @@ async function decrypt(inputPath, outputPath, privateKeyPath) {
   }
 }
 
+async function hmac(inputPath, outputPath) {
+  if (!inputPath || !outputPath) usage();
+  const secret = process.env.AUDIT_EXPORT_HMAC_KEY;
+  if (!secret || secret.length < 32) throw new Error("AUDIT_EXPORT_HMAC_KEY must contain at least 32 characters");
+  await assertAbsent(outputPath);
+  const digest = createHmac("sha256", secret).update(await readFile(inputPath)).digest("hex");
+  await writeFile(outputPath, `${digest}\n`, { mode: 0o600 });
+}
+
+async function verifyHmac(inputPath, signaturePath) {
+  if (!inputPath || !signaturePath) usage();
+  const secret = process.env.AUDIT_EXPORT_HMAC_KEY;
+  if (!secret || secret.length < 32) throw new Error("AUDIT_EXPORT_HMAC_KEY must contain at least 32 characters");
+  const expected = Buffer.from((await readFile(signaturePath, "utf8")).trim(), "hex");
+  const actual = Buffer.from(createHmac("sha256", secret).update(await readFile(inputPath)).digest("hex"), "hex");
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) throw new Error("Audit manifest HMAC verification failed");
+}
+
 const [command, ...args] = process.argv.slice(2);
 if (command === "keygen") await keygen(...args);
 else if (command === "encrypt") await encrypt(...args);
 else if (command === "decrypt") await decrypt(...args);
+else if (command === "hmac") await hmac(...args);
+else if (command === "verify-hmac") await verifyHmac(...args);
 else usage();

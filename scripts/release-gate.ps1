@@ -15,20 +15,20 @@ function With-Database([string]$Url,[string]$Database){$builder=[UriBuilder]$Url
 if($PostgresBinDirectory){$bin=[System.IO.Path]::GetFullPath($PostgresBinDirectory);$env:PATH="$bin;$env:PATH"}
 $results=[System.IO.Path]::GetFullPath((Join-Path $project $ResultDirectory));New-Item -ItemType Directory -Force -Path $results|Out-Null;$commit=(& git rev-parse HEAD).Trim();$branch=(& git branch --show-current).Trim()
 try{
-  Invoke-GateStep "TypeScript" {& npm run typecheck;if($LASTEXITCODE-ne0){throw"TypeScript validation failed"}}
-  Invoke-GateStep "Automated tests" {& npm test;if($LASTEXITCODE-ne0){throw"Automated tests failed"}}
-  Invoke-GateStep "Production build" {& npm run build;if($LASTEXITCODE-ne0){throw"Production build failed"};& (Join-Path $PSScriptRoot "prepare-standalone.ps1");if($LASTEXITCODE-ne0){throw"Standalone packaging failed"}}
+  Invoke-GateStep "TypeScript" {& npm run typecheck;if($LASTEXITCODE-ne0){throw "TypeScript validation failed"}}
+  Invoke-GateStep "Automated tests" {& npm test;if($LASTEXITCODE-ne0){throw "Automated tests failed"}}
+  Invoke-GateStep "Production build" {& npm run build;if($LASTEXITCODE-ne0){throw "Production build failed"};& (Join-Path $PSScriptRoot "prepare-standalone.ps1");if($LASTEXITCODE-ne0){throw "Standalone packaging failed"}}
   if(-not$CodeOnly){
-    if(-not$AdminMaintenanceUrl-or-not$RuntimeUrl){throw"POSTGRES_ADMIN_URL and DATABASE_URL are required for the disposable database gate"}
-    if($ApplicationRole-notmatch'^[a-z_][a-z0-9_]*$'){throw"ApplicationRole must be a simple PostgreSQL identifier"}
-    foreach($tool in @("createdb","dropdb","psql")){if(-not(Get-Command $tool -ErrorAction SilentlyContinue)){throw"PostgreSQL utility is required: $tool"}}
-    $dbName="mndf_pms_release_verify_$($started.ToString('yyyyMMddHHmmss'))";if($dbName-notmatch'^mndf_pms_release_verify_[0-9]{14}$'){throw"Unsafe disposable database name"};$adminGate=With-Database $AdminMaintenanceUrl $dbName;$runtimeGate=With-Database $RuntimeUrl $dbName
-    Invoke-GateStep "Create disposable database" {& createdb --maintenance-db=$AdminMaintenanceUrl $dbName;if($LASTEXITCODE-ne0){throw"Disposable database creation failed"}}
-    Invoke-GateStep "Migrations, constraints, RLS, and audit gate" {& (Join-Path $PSScriptRoot "apply-migrations.ps1") -AdminDatabaseUrl $adminGate -ApplicationDatabaseUrl $runtimeGate -ApplicationRole $ApplicationRole;if($LASTEXITCODE-ne0){throw"Database release gate failed"}}
-    if(-not$env:ACCEPTANCE_LOGIN_ID-or-not$env:ACCEPTANCE_PASSWORD){throw"A dedicated non-MFA ACCEPTANCE_LOGIN_ID and ACCEPTANCE_PASSWORD are required"}
-    Invoke-GateStep "Anonymous and authenticated browser/API smoke" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;& node (Join-Path $PSScriptRoot "acceptance-smoke.mjs");if($LASTEXITCODE-ne0){throw"Acceptance smoke failed"}}
-    if(-not$RestoreRehearsalResult){throw"RestoreRehearsalResult is required"};$restorePath=[System.IO.Path]::GetFullPath($RestoreRehearsalResult);if(-not(Test-Path -LiteralPath $restorePath)){throw"Restoration rehearsal result not found"}
-    Invoke-GateStep "Recent restoration rehearsal" {$restore=Get-Content -LiteralPath $restorePath -Raw|ConvertFrom-Json;if($restore.status-ne"SUCCESS"){throw"Restoration rehearsal did not succeed"};$age=$started-([datetime]$restore.verifiedAt).ToUniversalTime();if($age.TotalDays-gt$MaximumRestoreAgeDays-or$age.TotalSeconds-lt0){throw"Restoration rehearsal is outside the permitted age"}}
+    if(-not$AdminMaintenanceUrl-or-not$RuntimeUrl){throw "POSTGRES_ADMIN_URL and DATABASE_URL are required for the disposable database gate"}
+    if($ApplicationRole-notmatch'^[a-z_][a-z0-9_]*$'){throw "ApplicationRole must be a simple PostgreSQL identifier"}
+    foreach($tool in @("createdb","dropdb","psql")){if(-not(Get-Command $tool -ErrorAction SilentlyContinue)){throw "PostgreSQL utility is required: $tool"}}
+    $dbName="mndf_pms_release_verify_$($started.ToString('yyyyMMddHHmmss'))";if($dbName-notmatch'^mndf_pms_release_verify_[0-9]{14}$'){throw "Unsafe disposable database name"};$adminGate=With-Database $AdminMaintenanceUrl $dbName;$runtimeGate=With-Database $RuntimeUrl $dbName
+    Invoke-GateStep "Create disposable database" {& createdb --maintenance-db=$AdminMaintenanceUrl $dbName;if($LASTEXITCODE-ne0){throw "Disposable database creation failed"}}
+    Invoke-GateStep "Migrations, constraints, RLS, and audit gate" {& (Join-Path $PSScriptRoot "apply-migrations.ps1") -AdminDatabaseUrl $adminGate -ApplicationDatabaseUrl $runtimeGate -ApplicationRole $ApplicationRole;if($LASTEXITCODE-ne0){throw "Database release gate failed"}}
+    if(-not$env:ACCEPTANCE_LOGIN_ID-or-not$env:ACCEPTANCE_PASSWORD){throw "A dedicated non-MFA ACCEPTANCE_LOGIN_ID and ACCEPTANCE_PASSWORD are required"}
+    Invoke-GateStep "Anonymous and authenticated browser/API smoke" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;& node (Join-Path $PSScriptRoot "acceptance-smoke.mjs");if($LASTEXITCODE-ne0){throw "Acceptance smoke failed"}}
+    if(-not$RestoreRehearsalResult){throw "RestoreRehearsalResult is required"};$restorePath=[System.IO.Path]::GetFullPath($RestoreRehearsalResult);if(-not(Test-Path -LiteralPath $restorePath)){throw "Restoration rehearsal result not found"}
+    Invoke-GateStep "Recent restoration rehearsal" {$restore=Get-Content -LiteralPath $restorePath -Raw|ConvertFrom-Json;if($restore.status-ne"SUCCESS"){throw "Restoration rehearsal did not succeed"};$age=$started-([datetime]$restore.verifiedAt).ToUniversalTime();if($age.TotalDays-gt$MaximumRestoreAgeDays-or$age.TotalSeconds-lt0){throw "Restoration rehearsal is outside the permitted age"}}
   }
 }catch{$failure=$_}finally{
   if($dbName){& dropdb --maintenance-db=$AdminMaintenanceUrl --if-exists $dbName|Out-Null}

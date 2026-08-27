@@ -9,7 +9,7 @@ The detailed check covers:
 - bursts of failed MFA attempts;
 - restricted-data access and exceptional Technical Operator activity;
 - application/database clock drift;
-- latest encrypted backup success and age; and
+- latest encrypted backup and sealed audit-export success and age; and
 - presence, enabled state, and last result of the required Windows scheduled tasks.
 
 ## Installation

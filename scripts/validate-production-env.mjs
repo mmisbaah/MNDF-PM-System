@@ -1,6 +1,6 @@
 import { isAbsolute, resolve } from "node:path";
 
-const requiredSecrets = ["AUTH_JWT_SECRET", "GRIEVANCE_CRON_SECRET", "EVIDENCE_SCANNER_SECRET", "OPERATIONS_MONITOR_SECRET"];
+const requiredSecrets = ["AUTH_JWT_SECRET", "GRIEVANCE_CRON_SECRET", "EVIDENCE_SCANNER_SECRET", "OPERATIONS_MONITOR_SECRET", "AUDIT_EXPORT_HMAC_KEY"];
 const placeholder = /replace-|change-me|example|password/i;
 const failures = [];
 
@@ -30,6 +30,13 @@ values.push(mfaKey);
 
 const populatedSecrets = values.filter(Boolean);
 if (new Set(populatedSecrets).size !== populatedSecrets.length) failures.push("Authentication, MFA, scanner, monitoring, and scheduled-job secrets must all be different");
+
+try {
+  const auditDatabase = new URL(process.env.AUDIT_DATABASE_URL ?? "");
+  if (!["postgresql:", "postgres:"].includes(auditDatabase.protocol)) failures.push("AUDIT_DATABASE_URL must use PostgreSQL");
+  if (!auditDatabase.username || ["postgres", "mndf_pms_migration_owner", "mndf_pms_app"].includes(auditDatabase.username)) failures.push("AUDIT_DATABASE_URL must use a dedicated audit-export login");
+  if (!auditDatabase.password || placeholder.test(auditDatabase.password)) failures.push("AUDIT_DATABASE_URL must contain a non-placeholder password");
+} catch { failures.push("AUDIT_DATABASE_URL must be a valid PostgreSQL URL"); }
 
 const evidenceRoot = process.env.EVIDENCE_STORAGE_ROOT ?? "";
 if (!evidenceRoot || !isAbsolute(evidenceRoot)) failures.push("EVIDENCE_STORAGE_ROOT must be an absolute private path");

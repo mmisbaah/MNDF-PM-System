@@ -30,6 +30,12 @@ DO $$DECLARE v_missing text;BEGIN
    THEN RAISE EXCEPTION'operational report actor workflow enforcement is incomplete';END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='commander_role_exclusion_guard'AND NOT tgisinternal)
    THEN RAISE EXCEPTION'commander role exclusion guard missing';END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='audit_logs_seal_insert'AND NOT tgisinternal)
+   THEN RAISE EXCEPTION'audit hash-chain sealing trigger missing';END IF;
+ IF EXISTS(SELECT 1 FROM audit_logs WHERE hash_chain_value IS NULL)
+   THEN RAISE EXCEPTION'unsealed audit rows remain';END IF;
+ IF NOT(SELECT valid FROM verify_audit_hash_chain(NULL))
+   THEN RAISE EXCEPTION'audit hash-chain verification failed';END IF;
  IF EXISTS(
    SELECT 1 FROM account_roles commander JOIN account_roles participant
      ON participant.tenant_id=commander.tenant_id AND participant.account_id=commander.account_id

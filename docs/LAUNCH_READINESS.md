@@ -27,6 +27,7 @@ A release fails if any check fails.
 - The Technical Operator has no ordinary personnel, appraisal, grievance, or report-reading permission. Exceptional recovery activity is audit recorded.
 - Restricted-comment access is case-specific and every view/export is audit logged.
 - Audit rows cannot be directly inserted, updated, or deleted by the runtime role.
+- Audit rows have a verified per-tenant cryptographic chain and a current encrypted, signed, off-host export.
 - Initial unauthenticated organization setup is closed after installation and is reachable only from the host/private network.
 - Browser responses include anti-framing, MIME-sniffing, referrer, cross-origin, and device-permission security headers.
 
