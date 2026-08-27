@@ -1,6 +1,8 @@
 # Replace tracker.organization.example with the organization-controlled DNS name.
 tracker.organization.example {
     encode zstd gzip
+    @internal path /api/internal/*
+    respond @internal 404
     reverse_proxy 127.0.0.1:3100 {
         health_uri /api/health
         health_interval 30s

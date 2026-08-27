@@ -38,6 +38,14 @@ else {
   const current = resolve(process.cwd()).toLowerCase();
   if (normalized === current || normalized.startsWith(`${current}\\`) || normalized.startsWith(`${current}/`)) failures.push("EVIDENCE_STORAGE_ROOT must be outside the application directory");
 }
+const quarantineRoot = process.env.EVIDENCE_QUARANTINE_ROOT ?? "";
+if (!quarantineRoot || !isAbsolute(quarantineRoot)) failures.push("EVIDENCE_QUARANTINE_ROOT must be an absolute private path");
+else {
+  const normalized = resolve(quarantineRoot).toLowerCase();
+  const current = resolve(process.cwd()).toLowerCase();
+  if (normalized === current || normalized.startsWith(`${current}\\`) || normalized.startsWith(`${current}/`)) failures.push("EVIDENCE_QUARANTINE_ROOT must be outside the application directory");
+  if (evidenceRoot && normalized === resolve(evidenceRoot).toLowerCase()) failures.push("Evidence and quarantine roots must be different directories");
+}
 
 const hostname = process.env.HOSTNAME ?? "127.0.0.1";
 if (!["127.0.0.1", "localhost", "::1"].includes(hostname)) failures.push("HOSTNAME must bind the Next.js process to loopback; expose only the HTTPS reverse proxy");
