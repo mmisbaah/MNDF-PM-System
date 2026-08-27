@@ -16,6 +16,7 @@ import {
   UserX,
   Users,
 } from "lucide-react";
+import { NotificationCenter } from "./NotificationCenter";
 type Principal = {
   accountId: string;
   tenantId: string;
@@ -142,6 +143,7 @@ export function PilotWorkspace({ principal }: { principal: Principal }) {
             </p>
           </div>
           <div className="flex gap-2">
+            <NotificationCenter />
             <button
               onClick={() => void load()}
               disabled={busy}

@@ -108,9 +108,24 @@ export async function processDeadlines(tenantId: string) {
 export async function listNotifications(tenantId: string, accountId: string) {
   return withTenantTransaction(tenantId, accountId, async (client) => {
     const result = await client.query(
-      `SELECT id, complaint_id, appraisal_id, event_type, title, body, deliver_at, delivered_at, read_at
-       FROM grievance_notifications WHERE tenant_id = $1 AND recipient_account_id = $2
-         AND delivered_at IS NOT NULL ORDER BY deliver_at DESC LIMIT 100`, [tenantId, accountId]);
+      `SELECT * FROM (
+         SELECT 'GRIEVANCE' source,id,complaint_id,appraisal_id,event_type,title,body,
+                deliver_at,delivered_at,read_at
+         FROM grievance_notifications WHERE tenant_id=$1 AND recipient_account_id=$2 AND delivered_at IS NOT NULL
+         UNION ALL
+         SELECT 'CORRECTION' source,id,NULL::uuid complaint_id,appraisal_id,event_type,
+                'Appraisal correction update' title,message body,created_at deliver_at,created_at delivered_at,read_at
+         FROM correction_notifications WHERE tenant_id=$1 AND recipient_account_id=$2
+       ) notifications ORDER BY deliver_at DESC LIMIT 100`, [tenantId, accountId]);
     return result.rows;
   });
+}
+
+export async function markNotificationRead(tenantId:string,accountId:string,id:string,source:"GRIEVANCE"|"CORRECTION"){
+ return withTenantTransaction(tenantId,accountId,async client=>{
+  const table=source==="GRIEVANCE"?"grievance_notifications":"correction_notifications";
+  const result=await client.query(`UPDATE ${table} SET read_at=COALESCE(read_at,clock_timestamp()) WHERE tenant_id=$1 AND id=$2 AND recipient_account_id=$3 RETURNING id,read_at`,[tenantId,id,accountId]);
+  if(!result.rows[0])throw new EvaluationDomainError("Notification not found",404,"NOTIFICATION_NOT_FOUND");
+  return result.rows[0];
+ });
 }

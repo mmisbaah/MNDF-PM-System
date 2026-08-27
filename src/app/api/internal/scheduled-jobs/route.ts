@@ -1,0 +1,4 @@
+import{timingSafeEqual}from"node:crypto";import{NextRequest,NextResponse}from"next/server";import{runDueScheduledJobs}from"@/lib/operations/scheduled-jobs";
+export const runtime="nodejs";
+function authorized(request:NextRequest){const expected=process.env.GRIEVANCE_CRON_SECRET;const supplied=request.headers.get("authorization")?.replace(/^Bearer /,"");if(!expected||!supplied)return false;const a=Buffer.from(expected),b=Buffer.from(supplied);return a.length===b.length&&timingSafeEqual(a,b)}
+export async function POST(request:NextRequest){if(!authorized(request))return NextResponse.json({success:false,error:"Unauthorized"},{status:401});const result=await runDueScheduledJobs();const failed=result.runs.some(run=>!run.succeeded);return NextResponse.json({success:!failed,...result},{status:failed?503:200})}
