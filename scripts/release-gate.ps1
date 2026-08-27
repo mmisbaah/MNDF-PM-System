@@ -27,6 +27,7 @@ try{
     Invoke-GateStep "Migrations, constraints, RLS, and audit gate" {& (Join-Path $PSScriptRoot "apply-migrations.ps1") -AdminDatabaseUrl $adminGate -ApplicationDatabaseUrl $runtimeGate -ApplicationRole $ApplicationRole;if($LASTEXITCODE-ne0){throw "Database release gate failed"}}
     if(-not$env:ACCEPTANCE_LOGIN_ID-or-not$env:ACCEPTANCE_PASSWORD){throw "A dedicated non-MFA ACCEPTANCE_LOGIN_ID and ACCEPTANCE_PASSWORD are required"}
     Invoke-GateStep "Anonymous and authenticated browser/API smoke" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;& node (Join-Path $PSScriptRoot "acceptance-smoke.mjs");if($LASTEXITCODE-ne0){throw "Acceptance smoke failed"}}
+    Invoke-GateStep "Adversarial authentication and authorization regression" {$env:SECURITY_BASE_URL=$AcceptanceBaseUrl;& node (Join-Path $PSScriptRoot "security-regression.mjs");if($LASTEXITCODE-ne0){throw "Security regression failed"}}
     if(-not$RestoreRehearsalResult){throw "RestoreRehearsalResult is required"};$restorePath=[System.IO.Path]::GetFullPath($RestoreRehearsalResult);if(-not(Test-Path -LiteralPath $restorePath)){throw "Restoration rehearsal result not found"}
     Invoke-GateStep "Recent restoration rehearsal" {$restore=Get-Content -LiteralPath $restorePath -Raw|ConvertFrom-Json;if($restore.status-ne"SUCCESS"){throw "Restoration rehearsal did not succeed"};$age=$started-([datetime]$restore.verifiedAt).ToUniversalTime();if($age.TotalDays-gt$MaximumRestoreAgeDays-or$age.TotalSeconds-lt0){throw "Restoration rehearsal is outside the permitted age"}}
   }
