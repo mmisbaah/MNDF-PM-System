@@ -51,7 +51,7 @@ If public certificate issuance is unavailable, use Caddy internal TLS and distri
 
 Register `scripts/start-production.ps1` through the approved Windows service manager using the dedicated service account and the protected environment file. Configure automatic restart with bounded backoff. The working directory must be the release directory.
 
-After startup, verify `https://<approved-name>/api/health` returns HTTP 200. Monitor process exits, HTTP 5xx responses, authentication failures, deadline workers, scanner failures, and backup failures.
+After startup, verify `https://<approved-name>/api/health` returns HTTP 200. Install `scripts/install-monitor-task.ps1` and follow `docs/MONITORING_AND_INCIDENT_RESPONSE.md` to detect process/database outages, authentication failures, deadline-worker staleness, scanner failures, sensitive access, clock drift, and backup failures.
 
 ## Release and rollback
 

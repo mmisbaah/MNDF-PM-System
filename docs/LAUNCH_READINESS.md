@@ -38,7 +38,7 @@ A release fails if any check fails.
 - Keep encrypted backups on a separate device or storage location. Perform and record at least one restoration rehearsal before onboarding.
 - Configure system time synchronization; MFA and all grievance/correction deadlines depend on accurate server time.
 - Configure malware scanning for evidence uploads and prevent unscanned evidence from becoming accepted appraisal evidence.
-- Configure notifications and monitor failed deadline jobs, backup jobs, authentication failures, and security-recovery activity.
+- Install and test the operations watchdog for failed or stale deadline jobs, evidence scanning, backups, authentication bursts, clock drift, restricted access, and security-recovery activity.
 
 ## December acceptance scenarios
 

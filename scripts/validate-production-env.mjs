@@ -1,6 +1,6 @@
 import { isAbsolute, resolve } from "node:path";
 
-const requiredSecrets = ["AUTH_JWT_SECRET", "GRIEVANCE_CRON_SECRET", "EVIDENCE_SCANNER_SECRET"];
+const requiredSecrets = ["AUTH_JWT_SECRET", "GRIEVANCE_CRON_SECRET", "EVIDENCE_SCANNER_SECRET", "OPERATIONS_MONITOR_SECRET"];
 const placeholder = /replace-|change-me|example|password/i;
 const failures = [];
 
@@ -29,7 +29,7 @@ if (decodedMfaKey.length !== 32 || placeholder.test(mfaKey)) failures.push("MFA_
 values.push(mfaKey);
 
 const populatedSecrets = values.filter(Boolean);
-if (new Set(populatedSecrets).size !== populatedSecrets.length) failures.push("Authentication, MFA, scanner, and scheduled-job secrets must all be different");
+if (new Set(populatedSecrets).size !== populatedSecrets.length) failures.push("Authentication, MFA, scanner, monitoring, and scheduled-job secrets must all be different");
 
 const evidenceRoot = process.env.EVIDENCE_STORAGE_ROOT ?? "";
 if (!evidenceRoot || !isAbsolute(evidenceRoot)) failures.push("EVIDENCE_STORAGE_ROOT must be an absolute private path");
