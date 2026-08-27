@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 
 const baseUrl = (process.env.ACCEPTANCE_BASE_URL || "http://localhost:3100").replace(/\/$/, "");
+const cookies = new Map();
 
 async function request(path, init) {
-  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", ...init });
+  const headers = new Headers(init?.headers);
+  if (cookies.size) headers.set("cookie", [...cookies].map(([name, value]) => `${name}=${value}`).join("; "));
+  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", ...init, headers });
+  const setCookies = typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : [response.headers.get("set-cookie")].filter(Boolean);
+  for (const entry of setCookies) {
+    const pair = entry.split(";", 1)[0];
+    const separator = pair.indexOf("=");
+    if (separator > 0) cookies.set(pair.slice(0, separator), pair.slice(separator + 1));
+  }
   return { response, body: await response.text() };
 }
 
@@ -57,6 +66,25 @@ assert.match(worker.body, /url\.pathname\.startsWith\("\/api\/"\)\) return/,
 const shellAssets = worker.body.match(/SHELL_ASSETS\s*=\s*\[([^\]]*)\]/)?.[1] || "";
 assert.doesNotMatch(shellAssets, /\/api\//, "API endpoints must not be shell-cache assets");
 passed("PWA manifest and API-safe service worker");
+
+const loginId = process.env.ACCEPTANCE_LOGIN_ID;
+const password = process.env.ACCEPTANCE_PASSWORD;
+if (loginId || password) {
+  assert.ok(loginId && password, "ACCEPTANCE_LOGIN_ID and ACCEPTANCE_PASSWORD must be supplied together");
+  const login = await request("/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: baseUrl },
+    body: JSON.stringify({ email: loginId, password }),
+  });
+  assert.equal(login.response.status, 200, "acceptance account must authenticate without MFA or a required password change");
+  assert.equal(JSON.parse(login.body).next, "AUTHENTICATED");
+  const identity = await request("/api/auth/me");
+  assert.equal(identity.response.status, 200);
+  assert.equal(JSON.parse(identity.body).authenticated, true);
+  const workspace = await request("/api/workspace");
+  assert.equal(workspace.response.status, 200, "authenticated acceptance account must load its tenant workspace");
+  passed("authenticated tenant workspace boundary");
+}
 
 console.table(checks);
 console.log(`Acceptance smoke passed: ${checks.length}/${checks.length}`);

@@ -35,6 +35,8 @@ pnpm run build
 .\scripts\prepare-standalone.ps1
 ```
 
+Before switching the service path, run the full release-candidate procedure in `docs/RELEASE_GATE.md`. The generated gate result must report `PASS`; a development-only code gate is not deployment authorization.
+
 Copy `.env.example` to `C:\PerformanceTracker\config\.env.production.local`, replace every placeholder, restrict its ACL to the service account and deployment administrators, and run:
 
 ```powershell

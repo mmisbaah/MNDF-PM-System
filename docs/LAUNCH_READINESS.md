@@ -4,15 +4,15 @@ Target production start: **1 January 2027**. December 2026 is onboarding and par
 
 ## Automated release gate
 
-Run these checks against a disposable copy of the production schema before every release:
+Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It executes these checks against a newly created disposable copy of the production schema before every release:
 
 1. `pnpm run typecheck`
 2. `pnpm test`
 3. `pnpm run build`
 4. `database/tests/stage_1_1_gate.sql`
 5. `database/tests/runtime_rls_smoke.sql` inside a transaction that is rolled back
-6. `scripts/backup-postgres.ps1`, followed by `scripts/verify-restore.ps1` into an empty database
-7. Authenticated browser regression for Authorizer, Administrator, evaluator, appraisee, and grievance roles
+6. A recent successful encrypted database-and-evidence restoration rehearsal
+7. Anonymous and authenticated browser/API regression using a dedicated dummy acceptance account
 
 A release fails if any check fails.
 
@@ -52,4 +52,4 @@ A release fails if any check fails.
 - Confirm each quarterly cycle closes 25 calendar days after its quarter ends.
 - Complete a backup, destructive test-database loss simulation, and verified restore.
 
-The System Authorizer signs the release record only after all automated gates and acceptance scenarios pass. Any waiver must state the owner, risk, mitigation, and expiry date.
+The System Authorizer signs the release record only after the full gate reports `PASS` and all attended acceptance scenarios pass. `CODE_ONLY_PASS` is never sufficient for deployment. Any waiver must state the owner, risk, mitigation, and expiry date.

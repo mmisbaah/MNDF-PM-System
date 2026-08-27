@@ -1,0 +1,35 @@
+# Release-candidate gate
+
+No commit is deployable merely because it builds. Performance Tracker has two release gates:
+
+1. GitHub runs the code gate on every pull request and push to the release branch: frozen dependency installation, TypeScript, automated policy tests, and production compilation.
+2. An authorized operator runs the full Windows gate against the intended release, a newly created disposable PostgreSQL database, and the staged application.
+
+## Full attended gate
+
+Use a dedicated active appraisee acceptance account with no privileged role and no MFA requirement. It must contain only dummy pilot identity data. Store its credentials temporarily in the operator process and clear them afterward.
+
+```powershell
+$env:POSTGRES_ADMIN_URL = "postgresql://release_operator:...@127.0.0.1:5432/postgres"
+$env:DATABASE_URL = "postgresql://mndf_pms_app:...@127.0.0.1:5432/postgres"
+$env:ACCEPTANCE_LOGIN_ID = "release-test-user"
+$env:ACCEPTANCE_PASSWORD = "temporary value from the controlled test account"
+
+.\scripts\release-gate.ps1 `
+  -AcceptanceBaseUrl https://performance-tracker.internal `
+  -ApplicationRole mndf_pms_app `
+  -PostgresBinDirectory "C:\Program Files\PostgreSQL\17\bin" `
+  -RestoreRehearsalResult C:\PerformanceTracker\recovery-results\latest-success.json
+```
+
+The script creates a database named only under the guarded `mndf_pms_release_verify_<timestamp>` pattern, applies every migration, runs constraint/RLS/audit gates, and removes that disposable database in `finally`. It never points destructive cleanup at a supplied production database name.
+
+The authenticated smoke test checks installation identity, security headers, database health, anonymous rejection, cross-origin rejection, PWA cache safety, login, session identity, and tenant workspace loading. Privileged MFA ceremonies remain attended acceptance tests and are not bypassed for automation.
+
+The restoration result must report `SUCCESS` and be no older than 31 days by default. Recovery keys are never passed to CI or the release gate.
+
+## Result and approval
+
+Every run writes `output/release-gates/release-gate-<UTC timestamp>.json` with the exact Git commit, branch, duration, and each check result. `CODE_ONLY_PASS` is useful during development but is not a deployable result. Only `PASS` may be attached to the release record.
+
+The System Authorizer reviews the full result, the attended acceptance record, the recent restoration rehearsal, open incidents, and rollback target before signing release approval. A failed or incomplete check cannot be converted to a pass by editing the JSON file; rerun the gate after remediation.

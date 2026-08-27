@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
-    "backup:keygen": "node scripts/backup-crypto.mjs keygen"
+    "backup:keygen": "node scripts/backup-crypto.mjs keygen",
+    "release:code-gate": "powershell -NoProfile -File scripts/release-gate.ps1 -CodeOnly"
   },
   "dependencies": {
     "dotenv": "17.3.1",
