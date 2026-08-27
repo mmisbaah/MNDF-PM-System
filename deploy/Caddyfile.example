@@ -1,0 +1,23 @@
+# Replace tracker.organization.example with the organization-controlled DNS name.
+tracker.organization.example {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:3100 {
+        health_uri /api/health
+        health_interval 30s
+        health_timeout 5s
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+    log {
+        output file C:\PerformanceTracker\logs\access.log {
+            roll_size 25MiB
+            roll_keep 14
+        }
+        format json
+    }
+}
+
+# For an internal-only DNS name without a public certificate, add `tls internal`
+# and install Caddy's internal root certificate on every authorized client device.

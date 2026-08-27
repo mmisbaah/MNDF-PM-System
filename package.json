@@ -5,6 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "deploy:validate": "node scripts/validate-production-env.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
