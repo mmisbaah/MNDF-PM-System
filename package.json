@@ -11,6 +11,7 @@
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
     "security:regression": "node scripts/security-regression.mjs",
+    "capacity:smoke": "node scripts/capacity-smoke.mjs",
     "backup:keygen": "node scripts/backup-crypto.mjs keygen",
     "release:code-gate": "powershell -NoProfile -File scripts/release-gate.ps1 -CodeOnly"
   },

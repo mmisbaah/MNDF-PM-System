@@ -13,6 +13,8 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 5. `database/tests/runtime_rls_smoke.sql` inside a transaction that is rolled back
 6. A recent successful encrypted database-and-evidence restoration rehearsal
 7. Anonymous and authenticated browser/API regression using a dedicated dummy acceptance account
+8. Forty-user authenticated capacity test meeting the recorded latency and error thresholds
+9. December training-isolation gate and attended onboarding rehearsal record
 
 A release fails if any check fails.
 
