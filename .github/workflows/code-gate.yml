@@ -24,6 +24,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run accessibility:gate
+      - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
+      - name: Reject high or critical production dependency vulnerabilities
+        run: pnpm audit --prod --audit-level high
       - run: pnpm run build

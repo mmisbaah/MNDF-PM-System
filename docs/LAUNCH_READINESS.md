@@ -17,6 +17,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 9. December training-isolation gate and attended onboarding rehearsal record
 10. Validated operational-readiness record covering training, support ownership, incidents, rollback, and current Authorizer approval
 11. Approved records-retention policy versions and confirmed legal-hold/export/disposal custodians
+12. CI accessibility/lint gate, production dependency audit, and CodeQL security analysis
 
 A release fails if any check fails.
 
