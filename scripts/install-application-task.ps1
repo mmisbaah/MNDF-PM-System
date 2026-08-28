@@ -1,6 +1,7 @@
 param(
   [string]$ProjectDirectory=(Split-Path $PSScriptRoot -Parent),
   [string]$EnvironmentFile="C:\PerformanceTracker\config\.env.production.local",
+  [string]$LogDirectory="C:\PerformanceTracker\logs\application",
   [Parameter(Mandatory=$true)][Management.Automation.PSCredential]$ServiceCredential,
   [string]$TaskName="Performance-Tracker-Application"
 )
@@ -12,11 +13,12 @@ $project=[IO.Path]::GetFullPath($ProjectDirectory)
 $environment=[IO.Path]::GetFullPath($EnvironmentFile)
 $launcher=Join-Path $project "scripts\start-production.ps1"
 $server=Join-Path $project ".next\standalone\server.js"
-foreach($path in @($project,$environment,$launcher,$server)){if($path.Contains("'")){throw "Production paths may not contain apostrophes"}}
+$logs=[IO.Path]::GetFullPath($LogDirectory)
+foreach($path in @($project,$environment,$launcher,$server,$logs)){if($path.Contains("'")){throw "Production paths may not contain apostrophes"}}
 if(-not(Test-Path -LiteralPath $environment)){throw "Protected production environment file not found: $environment"}
 if(-not(Test-Path -LiteralPath $launcher)){throw "Production launcher not found: $launcher"}
 if(-not(Test-Path -LiteralPath $server)){throw "Prepared standalone server not found: $server"}
-$arguments="-NoProfile -NonInteractive -ExecutionPolicy AllSigned -File `"$launcher`" -ProjectDirectory `"$project`" -EnvironmentFile `"$environment`""
+$arguments="-NoProfile -NonInteractive -ExecutionPolicy AllSigned -File `"$launcher`" -ProjectDirectory `"$project`" -EnvironmentFile `"$environment`" -LogDirectory `"$logs`""
 $action=New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arguments -WorkingDirectory $project
 $trigger=New-ScheduledTaskTrigger -AtStartup
 $settings=New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1)

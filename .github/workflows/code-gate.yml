@@ -50,6 +50,19 @@ jobs:
             [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors) | Out-Null
             if($errors.Count){$errors | ForEach-Object { Write-Error "$file`: $($_.Message)" }; exit 1}
           }
+          foreach($file in @('scripts/start-production.ps1','scripts/install-application-task.ps1','scripts/monitor-production.ps1','scripts/install-monitor-task.ps1')){
+            $tokens=$null; $errors=$null
+            [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors) | Out-Null
+            if($errors.Count){$errors | ForEach-Object { Write-Error "$file`: $($_.Message)" }; exit 1}
+          }
+      - name: Verify application-log credential redaction
+        shell: pwsh
+        run: |
+          . ./scripts/application-log-redaction.ps1
+          $sample='postgresql://runtime:db-password@localhost/db Authorization: Bearer abc.def.ghi password=hunter2 MFA_SECRET=topsecret'
+          $redacted=Protect-ApplicationLogLine $sample
+          if($redacted -match 'db-password|abc\.def\.ghi|hunter2|topsecret'){throw 'A representative credential survived log redaction'}
+          if(([regex]::Matches($redacted,'\[REDACTED\]')).Count -ne 4){throw 'Expected four redacted credential values'}
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test

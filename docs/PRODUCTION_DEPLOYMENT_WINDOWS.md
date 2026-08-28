@@ -82,6 +82,8 @@ $serviceCredential = Get-Credential 'DOMAIN\PerformanceTrackerService'
 
 The task starts at boot, uses the guarded `current` junction as its working directory, prevents duplicate instances, and retries a failed process five times at one-minute intervals. The service account must have `Log on as a batch job`, read/execute access to the release and configuration, and only the data-directory permissions described above.
 
+Runtime output is timestamped, redacted, and written to the protected application log directory. See `docs/APPLICATION_LOGGING.md`. Do not redirect production output to a user profile, release directory, or interactive terminal.
+
 After startup, verify `https://<approved-name>/api/health` returns HTTP 200. Install the sealed audit export from `docs/AUDIT_LEDGER_RETENTION.md`, then install `scripts/install-monitor-task.ps1` and follow `docs/MONITORING_AND_INCIDENT_RESPONSE.md` to detect process/database outages, authentication failures, deadline-worker staleness, scanner failures, sensitive access, clock drift, backup failures, and stale audit exports.
 
 ## Release and rollback

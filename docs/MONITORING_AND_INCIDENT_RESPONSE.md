@@ -7,6 +7,7 @@ The detailed check covers:
 - grievance-deadline, cycle-lifecycle, and recommendation worker freshness and recent failures;
 - evidence uploads that have remained pending for more than ten minutes and recent scan failures;
 - database-pool utilization and requests waiting for a connection;
+- missing or excessive preserved application runtime logs;
 - bursts of failed MFA attempts;
 - restricted-data access and exceptional Technical Operator activity;
 - application/database clock drift;

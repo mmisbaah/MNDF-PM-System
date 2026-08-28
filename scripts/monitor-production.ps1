@@ -3,6 +3,8 @@ param(
   [string]$BackupLog="C:\PerformanceTracker\backups\backup-operations.jsonl",
   [string]$AuditExportLog="C:\PerformanceTracker\audit-exports\audit-export-operations.jsonl",
   [string]$AlertDirectory="C:\PerformanceTracker\logs\alerts",
+  [string]$ApplicationLogDirectory="C:\PerformanceTracker\logs\application",
+  [long]$MaximumApplicationLogBytes=1073741824,
   [int]$MaximumBackupAgeHours=30
 )
 $ErrorActionPreference="Stop"
@@ -11,6 +13,12 @@ $secret=$env:OPERATIONS_MONITOR_SECRET;if([string]::IsNullOrWhiteSpace($secret)-
 $alerts=@();$checkedAt=(Get-Date).ToUniversalTime()
 try{$health=Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/internal/operations-health" -Headers @{Authorization="Bearer $secret"} -TimeoutSec 30}catch{$health=$null;$alerts+="Application or database health endpoint is unavailable or critical: $($_.Exception.Message)"}
 if($health){foreach($check in @($health.checks)){if($check.severity-in@("WARNING","CRITICAL")){$alerts+="$($check.severity): $($check.name) - $($check.message)"}}}
+if(-not(Test-Path -LiteralPath $ApplicationLogDirectory)){$alerts+="WARNING: Application log directory is missing"}else{
+  $applicationLogs=@(Get-ChildItem -LiteralPath $ApplicationLogDirectory -File -Filter 'application-*.log' -ErrorAction SilentlyContinue)
+  if(-not$applicationLogs){$alerts+="WARNING: No application runtime log has been created"}
+  $applicationLogBytes=($applicationLogs|Measure-Object -Property Length -Sum).Sum
+  if($applicationLogBytes-gt$MaximumApplicationLogBytes){$alerts+="WARNING: Preserved application logs exceed $MaximumApplicationLogBytes bytes; apply only the approved SECURITY_TELEMETRY retention procedure"}
+}
 if(-not(Test-Path -LiteralPath $BackupLog)){$alerts+="CRITICAL: No backup operations log found"}else{
   $lastLine=Get-Content -LiteralPath $BackupLog -Tail 1;$last=$lastLine|ConvertFrom-Json;$lastTime=if($last.verifiedAt){[datetime]$last.verifiedAt}elseif($last.failedAt){[datetime]$last.failedAt}else{[datetime]::MinValue};$age=$checkedAt-$lastTime.ToUniversalTime()
   if($last.status-ne"SUCCESS"){$alerts+="CRITICAL: Most recent backup operation failed"};if($age.TotalHours-gt$MaximumBackupAgeHours){$alerts+="CRITICAL: Last verified backup is $([math]::Round($age.TotalHours,1)) hours old"}
