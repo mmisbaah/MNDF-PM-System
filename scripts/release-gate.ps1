@@ -9,6 +9,7 @@ param(
   [string]$ResultDirectory="output\release-gates",
   [int]$MaximumRestoreAgeDays=31,
   [int]$CapacityDurationSeconds=60,
+  [int]$LocalDatabasePort=5432,
   [switch]$CodeOnly
 )
 $ErrorActionPreference="Stop";$project=[System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."));$started=(Get-Date).ToUniversalTime();$checks=[System.Collections.Generic.List[object]]::new();$dbName=$null
@@ -30,6 +31,7 @@ try{
     Invoke-GateStep "Migrations, constraints, RLS, and audit gate" {& (Join-Path $PSScriptRoot "apply-migrations.ps1") -AdminDatabaseUrl $adminGate -ApplicationDatabaseUrl $runtimeGate -ApplicationRole $ApplicationRole;if($LASTEXITCODE-ne0){throw "Database release gate failed"}}
     $env:PRODUCTION_PUBLIC_URL=$AcceptanceBaseUrl
     Invoke-GateStep "HTTPS, redirect, certificate, and proxy boundary" {& node (Join-Path $PSScriptRoot "verify-tls-boundary.mjs");if($LASTEXITCODE-ne0){throw "TLS boundary verification failed"}}
+    Invoke-GateStep "Windows firewall, loopback ports, clock, and scheduled operations" {& (Join-Path $PSScriptRoot "verify-windows-host.ps1") -DatabasePort $LocalDatabasePort;if($LASTEXITCODE-ne0){throw "Windows host readiness verification failed"}}
     if(-not$env:ACCEPTANCE_LOGIN_ID-or-not$env:ACCEPTANCE_PASSWORD){throw "A dedicated non-MFA ACCEPTANCE_LOGIN_ID and ACCEPTANCE_PASSWORD are required"}
     Invoke-GateStep "Anonymous and authenticated browser/API smoke" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;& node (Join-Path $PSScriptRoot "acceptance-smoke.mjs");if($LASTEXITCODE-ne0){throw "Acceptance smoke failed"}}
     Invoke-GateStep "Authenticated mobile browser regression" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;$env:BROWSER_REGRESSION_OUTPUT=(Join-Path $results "browser-regression");& node (Join-Path $PSScriptRoot "browser-regression.mjs");if($LASTEXITCODE-ne0){throw "Authenticated browser regression failed"}}
