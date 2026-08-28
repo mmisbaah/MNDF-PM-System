@@ -17,6 +17,7 @@ function With-Database([string]$Url,[string]$Database){$builder=[UriBuilder]$Url
 if($PostgresBinDirectory){$bin=[System.IO.Path]::GetFullPath($PostgresBinDirectory);$env:PATH="$bin;$env:PATH"}
 $results=[System.IO.Path]::GetFullPath((Join-Path $project $ResultDirectory));New-Item -ItemType Directory -Force -Path $results|Out-Null;$commit=(& git rev-parse HEAD).Trim();$branch=(& git branch --show-current).Trim()
 try{
+  Invoke-GateStep "Accessibility source policy" {& npm run accessibility:gate;if($LASTEXITCODE-ne0){throw "Accessibility policy validation failed"}}
   Invoke-GateStep "TypeScript" {& npm run typecheck;if($LASTEXITCODE-ne0){throw "TypeScript validation failed"}}
   Invoke-GateStep "Automated tests" {& npm test;if($LASTEXITCODE-ne0){throw "Automated tests failed"}}
   Invoke-GateStep "Production build" {& npm run build;if($LASTEXITCODE-ne0){throw "Production build failed"};& (Join-Path $PSScriptRoot "prepare-standalone.ps1");if($LASTEXITCODE-ne0){throw "Standalone packaging failed"}}

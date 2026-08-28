@@ -7,6 +7,9 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
+  html {
+    text-size-adjust: 100%;
+  }
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -35,6 +38,41 @@
   textarea:focus-visible {
     outline: 3px solid #22d3ee;
     outline-offset: 2px;
+  }
+  .skip-link {
+    position: fixed;
+    left: 1rem;
+    top: max(1rem, env(safe-area-inset-top));
+    z-index: 100;
+    min-height: 48px;
+    translate: 0 -200%;
+    border-radius: 0.75rem;
+    background: #22d3ee;
+    color: #020617;
+    padding: 0.75rem 1rem;
+    font-weight: 700;
+  }
+  .skip-link:focus-visible {
+    translate: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  @media (forced-colors: active) {
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline-color: Highlight;
+    }
   }
 }
 
