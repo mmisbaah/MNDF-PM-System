@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { pool } from "@/db";
+import { databasePoolConfiguration } from "@/db/config";
 import { withTenantTransaction } from "@/lib/auth/repository";
 
 type Severity = "OK" | "WARNING" | "CRITICAL";
@@ -30,6 +31,10 @@ export async function operationsHealth() {
     const audit = await client.query<{ sensitive: string }>(`SELECT count(*)::text sensitive FROM audit_logs WHERE tenant_id=$1 AND occurred_at>=clock_timestamp()-interval '24 hours' AND(action LIKE 'TECHNICAL_OPERATOR_EXCEPTION%'OR restricted_access)`, [tenantId]);
     const clock = await client.query<{ server_time: Date }>("SELECT clock_timestamp() server_time");
     const checks: Check[] = [];
+    const poolMaximum = databasePoolConfiguration().max;
+    const waiting = pool.waitingCount;
+    const utilization = poolMaximum ? pool.totalCount / poolMaximum : 1;
+    checks.push({ name: "database-pool", severity: waiting > 0 || utilization >= 0.9 ? "WARNING" : "OK", message: `${pool.totalCount}/${poolMaximum} connections allocated, ${pool.idleCount} idle, ${waiting} waiting`, value: waiting });
     const maximumAge: Record<string, number> = { GRIEVANCE_DEADLINES: 5 * 60_000, CYCLE_LIFECYCLE: 30 * 60_000, RECOMMENDATION_ELIGIBILITY: 2 * 60 * 60_000 };
     for (const row of jobs.rows) {
       const age = row.last_success ? Date.now() - new Date(row.last_success).getTime() : Number.POSITIVE_INFINITY;

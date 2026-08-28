@@ -6,6 +6,22 @@ const failures = [];
 const values = [];
 if (process.env.NODE_ENV !== "production") failures.push("NODE_ENV must be production");
 
+function boundedInteger(name, fallback, minimum, maximum) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  if (!/^[0-9]+$/.test(raw)) { failures.push(`${name} must be an integer`); return fallback; }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) failures.push(`${name} must be between ${minimum} and ${maximum}`);
+  return value;
+}
+boundedInteger("DB_POOL_MAX", 15, 2, 50);
+boundedInteger("DB_CONNECT_TIMEOUT_MS", 5_000, 1_000, 30_000);
+boundedInteger("DB_IDLE_TIMEOUT_MS", 30_000, 10_000, 300_000);
+boundedInteger("DB_MAX_LIFETIME_SECONDS", 1_800, 60, 7_200);
+const statementTimeout = boundedInteger("DB_STATEMENT_TIMEOUT_MS", 15_000, 1_000, 120_000);
+const queryTimeout = boundedInteger("DB_QUERY_TIMEOUT_MS", 20_000, 1_000, 150_000);
+if (queryTimeout <= statementTimeout) failures.push("DB_QUERY_TIMEOUT_MS must be greater than DB_STATEMENT_TIMEOUT_MS");
+
 let database;
 try {
   database = new URL(process.env.DATABASE_URL ?? "");

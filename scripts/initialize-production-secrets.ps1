@@ -20,7 +20,7 @@ Assert-PostgresUrl "DatabaseUrl" $DatabaseUrl
 Assert-PostgresUrl "AuditDatabaseUrl" $AuditDatabaseUrl
 $mfaBytes=[byte[]]::new(32);[Security.Cryptography.RandomNumberGenerator]::Fill($mfaBytes)
 $entries=[ordered]@{
-  NODE_ENV="production";DATABASE_URL=$DatabaseUrl;AUTH_JWT_SECRET=(New-Secret);MFA_ENCRYPTION_KEY=[Convert]::ToBase64String($mfaBytes);GRIEVANCE_CRON_SECRET=(New-Secret);EVIDENCE_STORAGE_ROOT=[IO.Path]::GetFullPath($EvidenceStorageRoot);EVIDENCE_QUARANTINE_ROOT=[IO.Path]::GetFullPath($EvidenceQuarantineRoot);EVIDENCE_SCANNER_SECRET=(New-Secret);OPERATIONS_MONITOR_SECRET=(New-Secret);AUDIT_EXPORT_HMAC_KEY=(New-Secret);AUDIT_DATABASE_URL=$AuditDatabaseUrl;HOSTNAME="127.0.0.1";PORT="3100"
+  NODE_ENV="production";DATABASE_URL=$DatabaseUrl;DB_POOL_MAX="15";DB_CONNECT_TIMEOUT_MS="5000";DB_IDLE_TIMEOUT_MS="30000";DB_MAX_LIFETIME_SECONDS="1800";DB_STATEMENT_TIMEOUT_MS="15000";DB_QUERY_TIMEOUT_MS="20000";AUTH_JWT_SECRET=(New-Secret);MFA_ENCRYPTION_KEY=[Convert]::ToBase64String($mfaBytes);GRIEVANCE_CRON_SECRET=(New-Secret);EVIDENCE_STORAGE_ROOT=[IO.Path]::GetFullPath($EvidenceStorageRoot);EVIDENCE_QUARANTINE_ROOT=[IO.Path]::GetFullPath($EvidenceQuarantineRoot);EVIDENCE_SCANNER_SECRET=(New-Secret);OPERATIONS_MONITOR_SECRET=(New-Secret);AUDIT_EXPORT_HMAC_KEY=(New-Secret);AUDIT_DATABASE_URL=$AuditDatabaseUrl;HOSTNAME="127.0.0.1";PORT="3100"
 }
 $parent=Split-Path -Parent $target;if(-not(Test-Path -LiteralPath $parent)){New-Item -ItemType Directory -Path $parent|Out-Null}
 $temporary="$target.$([guid]::NewGuid().ToString('N')).tmp"
