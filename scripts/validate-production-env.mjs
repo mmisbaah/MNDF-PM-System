@@ -78,6 +78,13 @@ if (!["127.0.0.1", "localhost", "::1"].includes(hostname)) failures.push("HOSTNA
 const port = Number(process.env.PORT ?? "3100");
 if (!Number.isInteger(port) || port < 1024 || port > 65535) failures.push("PORT must be an unprivileged TCP port between 1024 and 65535");
 
+try {
+  const publicUrl = new URL(process.env.PRODUCTION_PUBLIC_URL ?? "");
+  if (publicUrl.protocol !== "https:") failures.push("PRODUCTION_PUBLIC_URL must use HTTPS");
+  if (["localhost", "127.0.0.1", "::1"].includes(publicUrl.hostname)) failures.push("PRODUCTION_PUBLIC_URL must identify the organization-controlled reverse proxy, not loopback");
+  if (publicUrl.username || publicUrl.password || publicUrl.search || publicUrl.hash) failures.push("PRODUCTION_PUBLIC_URL must not contain credentials, a query, or a fragment");
+} catch { failures.push("PRODUCTION_PUBLIC_URL must be a valid HTTPS URL"); }
+
 if (failures.length) {
   console.error("Production configuration rejected:");
   for (const failure of failures) console.error(`- ${failure}`);

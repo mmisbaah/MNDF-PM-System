@@ -28,6 +28,8 @@ try{
     $dbName="mndf_pms_release_verify_$($started.ToString('yyyyMMddHHmmss'))";if($dbName-notmatch'^mndf_pms_release_verify_[0-9]{14}$'){throw "Unsafe disposable database name"};$adminGate=With-Database $AdminMaintenanceUrl $dbName;$runtimeGate=With-Database $RuntimeUrl $dbName
     Invoke-GateStep "Create disposable database" {& createdb --maintenance-db=$AdminMaintenanceUrl $dbName;if($LASTEXITCODE-ne0){throw "Disposable database creation failed"}}
     Invoke-GateStep "Migrations, constraints, RLS, and audit gate" {& (Join-Path $PSScriptRoot "apply-migrations.ps1") -AdminDatabaseUrl $adminGate -ApplicationDatabaseUrl $runtimeGate -ApplicationRole $ApplicationRole;if($LASTEXITCODE-ne0){throw "Database release gate failed"}}
+    $env:PRODUCTION_PUBLIC_URL=$AcceptanceBaseUrl
+    Invoke-GateStep "HTTPS, redirect, certificate, and proxy boundary" {& node (Join-Path $PSScriptRoot "verify-tls-boundary.mjs");if($LASTEXITCODE-ne0){throw "TLS boundary verification failed"}}
     if(-not$env:ACCEPTANCE_LOGIN_ID-or-not$env:ACCEPTANCE_PASSWORD){throw "A dedicated non-MFA ACCEPTANCE_LOGIN_ID and ACCEPTANCE_PASSWORD are required"}
     Invoke-GateStep "Anonymous and authenticated browser/API smoke" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;& node (Join-Path $PSScriptRoot "acceptance-smoke.mjs");if($LASTEXITCODE-ne0){throw "Acceptance smoke failed"}}
     Invoke-GateStep "Authenticated mobile browser regression" {$env:ACCEPTANCE_BASE_URL=$AcceptanceBaseUrl;$env:BROWSER_REGRESSION_OUTPUT=(Join-Path $results "browser-regression");& node (Join-Path $PSScriptRoot "browser-regression.mjs");if($LASTEXITCODE-ne0){throw "Authenticated browser regression failed"}}

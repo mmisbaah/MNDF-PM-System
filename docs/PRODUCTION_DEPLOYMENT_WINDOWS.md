@@ -41,6 +41,7 @@ Create the protected environment with independent cryptographic values and a res
 
 ```powershell
 .\scripts\initialize-production-secrets.ps1 `
+  -PublicUrl "https://tracker.organization.example" `
   -OutputPath C:\PerformanceTracker\config\.env.production.local `
   -DatabaseUrl $env:PERFORMANCE_TRACKER_RUNTIME_URL `
   -AuditDatabaseUrl $env:PERFORMANCE_TRACKER_AUDIT_URL `

@@ -21,6 +21,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 13. Authenticated real-browser mobile navigation and sign-out regression
 14. Protected production-secret initialization, independent-value validation, custody, and rotation record
 15. Bounded database pool, timeout validation, pool-pressure monitoring, and 40-user capacity evidence
+16. Verified HTTPS redirect, trusted certificate lifetime, HSTS, suppressed server identity, and blocked internal proxy routes
 
 A release fails if any check fails.
 

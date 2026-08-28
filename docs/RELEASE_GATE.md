@@ -28,6 +28,8 @@ The script creates a database named only under the guarded `mndf_pms_release_ver
 
 The authenticated API smoke checks installation identity, security headers, database health, anonymous rejection, cross-origin rejection, PWA cache safety, login, session identity, and tenant workspace loading. The browser regression then uses the same dummy account at a 390×844 viewport to verify the real login form, completed workspace loading, mobile overflow, primary navigation selection, console/server failures, and sign-out. On failure it writes a screenshot and redacted JSON result under the release-gate output directory. Privileged MFA ceremonies remain attended acceptance tests and are not bypassed for automation.
 
+Before application smoke tests, the gate verifies the public HTTPS boundary: trusted hostname certificate, at least 14 days of certificate life, TLS 1.2 or newer, HTTP-to-HTTPS redirect, one-year HSTS, suppressed `Server` header, and denial of `/api/internal/*`. See `docs/TLS_AND_REVERSE_PROXY.md`.
+
 Install the browser automation dependency during release-host provisioning. On the Windows staging host, set `BROWSER_CHANNEL=msedge` to use the organization-managed Edge installation. For isolated engineering environments using bundled Chromium, run `pnpm exec playwright install chromium` once after the frozen dependency installation.
 
 The restoration result must report `SUCCESS` and be no older than 31 days by default. Recovery keys are never passed to CI or the release gate.
