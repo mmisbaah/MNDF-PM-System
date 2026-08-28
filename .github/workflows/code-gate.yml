@@ -26,6 +26,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run accessibility:gate
       - run: node --check scripts/browser-regression.mjs
+      - run: node --check scripts/validate-production-env.mjs
+      - name: Parse production secret initializer
+        shell: pwsh
+        run: |
+          $tokens=$null; $errors=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/initialize-production-secrets.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count){$errors | ForEach-Object { Write-Error $_.Message }; exit 1}
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test

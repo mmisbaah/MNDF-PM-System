@@ -3,6 +3,8 @@ import { isAbsolute, resolve } from "node:path";
 const requiredSecrets = ["AUTH_JWT_SECRET", "GRIEVANCE_CRON_SECRET", "EVIDENCE_SCANNER_SECRET", "OPERATIONS_MONITOR_SECRET", "AUDIT_EXPORT_HMAC_KEY"];
 const placeholder = /replace-|change-me|example|password/i;
 const failures = [];
+const values = [];
+if (process.env.NODE_ENV !== "production") failures.push("NODE_ENV must be production");
 
 let database;
 try {
@@ -11,11 +13,11 @@ try {
   if (!database.username) failures.push("DATABASE_URL must include a restricted application username");
   if (["postgres", "mndf_pms_migration_owner", "mndf_pms_backup"].includes(database.username)) failures.push("DATABASE_URL must not use an administrative, migration, or backup role");
   if (!database.password || placeholder.test(database.password)) failures.push("DATABASE_URL must contain a non-placeholder runtime password");
+  if (database.password) values.push(database.password);
 } catch {
   failures.push("DATABASE_URL must be a valid PostgreSQL URL");
 }
 
-const values = [];
 for (const name of requiredSecrets) {
   const value = process.env[name] ?? "";
   if (value.length < 32 || placeholder.test(value)) failures.push(`${name} must be a unique non-placeholder value of at least 32 characters`);
@@ -28,15 +30,16 @@ try { decodedMfaKey = Buffer.from(mfaKey, "base64"); } catch { decodedMfaKey = B
 if (decodedMfaKey.length !== 32 || placeholder.test(mfaKey)) failures.push("MFA_ENCRYPTION_KEY must be a base64-encoded 32-byte key");
 values.push(mfaKey);
 
-const populatedSecrets = values.filter(Boolean);
-if (new Set(populatedSecrets).size !== populatedSecrets.length) failures.push("Authentication, MFA, scanner, monitoring, and scheduled-job secrets must all be different");
-
 try {
   const auditDatabase = new URL(process.env.AUDIT_DATABASE_URL ?? "");
   if (!["postgresql:", "postgres:"].includes(auditDatabase.protocol)) failures.push("AUDIT_DATABASE_URL must use PostgreSQL");
   if (!auditDatabase.username || ["postgres", "mndf_pms_migration_owner", "mndf_pms_app"].includes(auditDatabase.username)) failures.push("AUDIT_DATABASE_URL must use a dedicated audit-export login");
   if (!auditDatabase.password || placeholder.test(auditDatabase.password)) failures.push("AUDIT_DATABASE_URL must contain a non-placeholder password");
+  if (auditDatabase.password) values.push(auditDatabase.password);
 } catch { failures.push("AUDIT_DATABASE_URL must be a valid PostgreSQL URL"); }
+
+const populatedSecrets = values.filter(Boolean);
+if (new Set(populatedSecrets).size !== populatedSecrets.length) failures.push("Database, authentication, MFA, scanner, monitoring, audit, and scheduled-job secrets must all be different");
 
 const evidenceRoot = process.env.EVIDENCE_STORAGE_ROOT ?? "";
 if (!evidenceRoot || !isAbsolute(evidenceRoot)) failures.push("EVIDENCE_STORAGE_ROOT must be an absolute private path");

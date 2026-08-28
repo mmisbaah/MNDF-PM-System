@@ -37,11 +37,26 @@ pnpm run build
 
 Before switching the service path, run the full release-candidate procedure in `docs/RELEASE_GATE.md`. The generated gate result must report `PASS`; a development-only code gate is not deployment authorization.
 
-Copy `.env.example` to `C:\PerformanceTracker\config\.env.production.local`, replace every placeholder, restrict its ACL to the service account and deployment administrators, and run:
+Create the protected environment with independent cryptographic values and a restrictive ACL. Supply pre-created restricted database URLs; URL-encode reserved characters in passwords.
+
+```powershell
+.\scripts\initialize-production-secrets.ps1 `
+  -OutputPath C:\PerformanceTracker\config\.env.production.local `
+  -DatabaseUrl $env:PERFORMANCE_TRACKER_RUNTIME_URL `
+  -AuditDatabaseUrl $env:PERFORMANCE_TRACKER_AUDIT_URL `
+  -EvidenceStorageRoot C:\PerformanceTracker\evidence `
+  -EvidenceQuarantineRoot C:\PerformanceTracker\quarantine `
+  -ServiceAccount 'DOMAIN\PerformanceTrackerService' `
+  -DeploymentAdministrators 'DOMAIN\PerformanceTrackerDeployers'
+```
+
+The initializer refuses to overwrite an existing file, never prints secret values, applies the ACL, and runs configuration validation. Independently verify the ACL and then run:
 
 ```powershell
 node --env-file=C:\PerformanceTracker\config\.env.production.local scripts\validate-production-env.mjs
 ```
+
+Follow `docs/SECRETS_MANAGEMENT.md` for custody and rotation. Never copy the production file back into a release directory.
 
 ## HTTPS and network boundary
 
