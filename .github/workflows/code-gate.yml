@@ -28,6 +28,8 @@ jobs:
       - run: node --check scripts/browser-regression.mjs
       - run: node --check scripts/validate-production-env.mjs
       - run: node --check scripts/verify-tls-boundary.mjs
+      - run: node --check scripts/release-signing.mjs
+      - run: pnpm run release-signing:selftest
       - name: Parse production secret initializer
         shell: pwsh
         run: |

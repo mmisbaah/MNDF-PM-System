@@ -72,7 +72,8 @@ Install the application startup task from an elevated deployment PowerShell sess
 ```powershell
 $serviceCredential = Get-Credential 'DOMAIN\PerformanceTrackerService'
 .\scripts\promote-release.ps1 -Initialize `
-  -ReleaseDirectory C:\PerformanceTracker\releases\<release-id>
+  -ReleaseDirectory C:\PerformanceTracker\releases\<release-id> `
+  -TrustedPublicKeySha256 '<fingerprint from approved readiness record>'
 .\scripts\install-application-task.ps1 `
   -ProjectDirectory C:\PerformanceTracker\current `
   -EnvironmentFile C:\PerformanceTracker\config\.env.production.local `
@@ -85,11 +86,12 @@ After startup, verify `https://<approved-name>/api/health` returns HTTP 200. Ins
 
 ## Release and rollback
 
-Deploy each Git commit into a new immutable release directory and apply only forward-compatible migrations. Promote it with:
+Sign the generated release manifest according to `docs/RELEASE_SIGNING.md`. Deploy each signed Git commit into a new immutable release directory and apply only forward-compatible migrations. Promote it with:
 
 ```powershell
 .\scripts\promote-release.ps1 `
-  -ReleaseDirectory C:\PerformanceTracker\releases\<new-release-id>
+  -ReleaseDirectory C:\PerformanceTracker\releases\<new-release-id> `
+  -TrustedPublicKeySha256 '<fingerprint from approved readiness record>'
 ```
 
 The script verifies the generated package manifest and SHA-256 hashes, stops the application task, swaps only guarded directory junctions, restarts the task, and waits for loopback health. A failed health check automatically restores the previous junction and verifies recovery. It refuses paths outside the release root and refuses to replace ordinary directories. Keep the previous release until the rollback rehearsal and post-deployment observation period are complete. Database rollback requires a tested restoration plan; never reverse migrations casually.

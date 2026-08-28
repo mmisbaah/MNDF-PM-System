@@ -29,9 +29,13 @@
     "targetCommit": "0000000",
     "verifiedAt": "2026-12-01T00:00:00Z"
   },
+  "releaseSigning": {
+    "custodian": "REPLACE_ME",
+    "publicKeySha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "verifiedAt": "2026-12-01T00:00:00Z"
+  },
   "approval": {
     "systemAuthorizer": "REPLACE_ME",
     "approvedAt": "2026-12-01T00:00:00Z"
   }
 }
-

@@ -17,6 +17,7 @@
     "accessibility:gate": "node scripts/accessibility-static-gate.mjs",
     "readiness:validate": "node scripts/validate-operational-readiness.mjs",
     "backup:keygen": "node scripts/backup-crypto.mjs keygen",
+    "release-signing:selftest": "node scripts/release-signing.mjs selftest",
     "release:code-gate": "powershell -NoProfile -File scripts/release-gate.ps1 -CodeOnly"
   },
   "dependencies": {

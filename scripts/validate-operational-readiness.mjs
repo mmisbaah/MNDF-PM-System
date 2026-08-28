@@ -48,6 +48,10 @@ requiredText(record.rollback?.owner, "rollback.owner");
 assert.match(record.rollback?.targetCommit || "", /^[0-9a-f]{7,40}$/i, "rollback.targetCommit must be a Git commit");
 const rollbackVerifiedAt = new Date(record.rollback?.verifiedAt);
 assert.ok(Number.isFinite(rollbackVerifiedAt.getTime()), "rollback.verifiedAt must be an ISO timestamp");
+requiredText(record.releaseSigning?.custodian, "releaseSigning.custodian");
+assert.match(record.releaseSigning?.publicKeySha256 || "", /^(?!0{64})[0-9a-f]{64}$/i, "releaseSigning.publicKeySha256 must be the independently verified key fingerprint");
+const signingKeyVerifiedAt = new Date(record.releaseSigning?.verifiedAt);
+assert.ok(Number.isFinite(signingKeyVerifiedAt.getTime()), "releaseSigning.verifiedAt must be an ISO timestamp");
 requiredText(record.approval?.systemAuthorizer, "approval.systemAuthorizer");
 const approvedAt = new Date(record.approval?.approvedAt);
 assert.ok(Number.isFinite(approvedAt.getTime()), "approval.approvedAt must be an ISO timestamp");
@@ -61,4 +65,3 @@ console.log(JSON.stringify({
   attendedScenariosPassed: requiredScenarios.size,
   approvedAt: approvedAt.toISOString(),
 }, null, 2));
-

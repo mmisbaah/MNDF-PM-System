@@ -25,6 +25,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 17. Verified Windows firewall profiles, loopback-only application/database listeners, synchronized system time, and enabled operations tasks
 18. Dedicated-account application auto-start with single-instance enforcement and bounded restart behavior
 19. Integrity-verified release promotion with guarded junction switching, health verification, automatic rollback, and immutable operation logging
+20. Ed25519-signed release manifest verified against an independently pinned production public key before promotion
 
 A release fails if any check fails.
 

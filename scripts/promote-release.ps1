@@ -5,6 +5,8 @@ param(
   [string]$TaskName="Performance-Tracker-Application",
   [string]$HealthUrl="http://127.0.0.1:3100/api/health",
   [string]$OperationLog="C:\PerformanceTracker\logs\deployment-operations.jsonl",
+  [string]$ReleasePublicKey="C:\PerformanceTracker\config\release-signing-public.pem",
+  [Parameter(Mandatory=$true)][string]$TrustedPublicKeySha256,
   [switch]$Initialize
 )
 $ErrorActionPreference="Stop"
@@ -18,7 +20,17 @@ if($current.StartsWith("$root\",[StringComparison]::OrdinalIgnoreCase)-or$curren
 if(-not(Test-Path -LiteralPath $release -PathType Container)){throw "Release directory not found: $release"}
 $standalone=Join-Path $release ".next\standalone"
 $manifestPath=Join-Path $standalone "release-manifest.json"
+$signaturePath=Join-Path $standalone "release-manifest.sig.json"
 if(-not(Test-Path -LiteralPath $manifestPath)){throw "Release manifest not found"}
+if(-not(Test-Path -LiteralPath $signaturePath)){throw "Detached release signature not found"}
+if(-not(Test-Path -LiteralPath $ReleasePublicKey)){throw "Trusted release public key not found"}
+$publicKeyPath=[IO.Path]::GetFullPath($ReleasePublicKey)
+if($publicKeyPath.StartsWith("$root\",[StringComparison]::OrdinalIgnoreCase)){throw "Trusted public key must be stored outside the release directory"}
+if($TrustedPublicKeySha256-notmatch'^[0-9a-fA-F]{64}$'){throw "TrustedPublicKeySha256 must be an independently recorded SHA-256 fingerprint"}
+$actualPublicKeySha256=(Get-FileHash -LiteralPath $publicKeyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if($actualPublicKeySha256-ne$TrustedPublicKeySha256.ToLowerInvariant()){throw "Release public key fingerprint does not match the independently trusted value"}
+& node (Join-Path $PSScriptRoot "release-signing.mjs") verify $manifestPath $signaturePath $publicKeyPath
+if($LASTEXITCODE-ne0){throw "Release signature verification failed"}
 $manifest=Get-Content -LiteralPath $manifestPath -Raw|ConvertFrom-Json
 if($manifest.format-ne"performance-tracker-release-package-v1"-or$manifest.commit-notmatch'^[0-9a-f]{40}$'){throw "Release manifest is invalid"}
 foreach($item in @(@{path=(Join-Path $standalone "server.js");expected=$manifest.serverSha256},@{path=(Join-Path $standalone "package.json");expected=$manifest.packageSha256})){
