@@ -26,6 +26,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 18. Dedicated-account application auto-start with single-instance enforcement and bounded restart behavior
 19. Integrity-verified release promotion with guarded junction switching, health verification, automatic rollback, and immutable operation logging
 20. Ed25519-signed release manifest verified against an independently pinned production public key before promotion
+21. Protected non-inheriting production ACLs with explicit least-privilege service-account access and no broad secret/evidence access
 
 A release fails if any check fails.
 

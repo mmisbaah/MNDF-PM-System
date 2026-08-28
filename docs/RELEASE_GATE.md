@@ -21,7 +21,8 @@ $env:BROWSER_CHANNEL = "msedge" # organization-controlled Windows host
   -ApplicationRole mndf_pms_app `
   -PostgresBinDirectory "C:\Program Files\PostgreSQL\17\bin" `
   -RestoreRehearsalResult C:\PerformanceTracker\recovery-results\latest-success.json `
-  -OperationalReadinessRecord C:\PerformanceTracker\release\operational-readiness.json
+  -OperationalReadinessRecord C:\PerformanceTracker\release\operational-readiness.json `
+  -ProductionServiceAccount 'DOMAIN\PerformanceTrackerService'
 ```
 
 The script creates a database named only under the guarded `mndf_pms_release_verify_<timestamp>` pattern, applies every migration, runs constraint/RLS/audit gates, and removes that disposable database in `finally`. It never points destructive cleanup at a supplied production database name.
@@ -31,6 +32,8 @@ The authenticated API smoke checks installation identity, security headers, data
 Before application smoke tests, the gate verifies the public HTTPS boundary: trusted hostname certificate, at least 14 days of certificate life, TLS 1.2 or newer, HTTP-to-HTTPS redirect, one-year HSTS, suppressed `Server` header, and denial of `/api/internal/*`. See `docs/TLS_AND_REVERSE_PROXY.md`.
 
 The full Windows gate also verifies enabled firewall profiles, loopback-only application and database listeners, successful Windows Time synchronization, and every required scheduled operations task. See `docs/WINDOWS_HOST_HARDENING.md`.
+
+The gate also verifies protected production directory ACLs and explicit access for the dedicated application identity. See `docs/FILESYSTEM_ACCESS_CONTROL.md`.
 
 Install the browser automation dependency during release-host provisioning. On the Windows staging host, set `BROWSER_CHANNEL=msedge` to use the organization-managed Edge installation. For isolated engineering environments using bundled Chromium, run `pnpm exec playwright install chromium` once after the frozen dependency installation.
 
