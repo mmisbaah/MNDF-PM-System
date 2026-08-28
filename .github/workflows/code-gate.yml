@@ -40,9 +40,15 @@ jobs:
           $tokens=$null; $errors=$null
           [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/install-application-task.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
           if($errors.Count){$errors | ForEach-Object { Write-Error $_.Message }; exit 1}
+          $tokens=$null; $errors=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/promote-release.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count){$errors | ForEach-Object { Write-Error $_.Message }; exit 1}
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
       - name: Reject high or critical dependency vulnerabilities
         run: pnpm audit --audit-level high
       - run: pnpm run build
+      - name: Prepare integrity-manifested standalone package
+        shell: pwsh
+        run: .\scripts\prepare-standalone.ps1

@@ -24,6 +24,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 16. Verified HTTPS redirect, trusted certificate lifetime, HSTS, suppressed server identity, and blocked internal proxy routes
 17. Verified Windows firewall profiles, loopback-only application/database listeners, synchronized system time, and enabled operations tasks
 18. Dedicated-account application auto-start with single-instance enforcement and bounded restart behavior
+19. Integrity-verified release promotion with guarded junction switching, health verification, automatic rollback, and immutable operation logging
 
 A release fails if any check fails.
 

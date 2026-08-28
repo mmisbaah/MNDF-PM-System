@@ -71,18 +71,27 @@ Install the application startup task from an elevated deployment PowerShell sess
 
 ```powershell
 $serviceCredential = Get-Credential 'DOMAIN\PerformanceTrackerService'
+.\scripts\promote-release.ps1 -Initialize `
+  -ReleaseDirectory C:\PerformanceTracker\releases\<release-id>
 .\scripts\install-application-task.ps1 `
-  -ProjectDirectory C:\PerformanceTracker\releases\<release-id> `
+  -ProjectDirectory C:\PerformanceTracker\current `
   -EnvironmentFile C:\PerformanceTracker\config\.env.production.local `
   -ServiceCredential $serviceCredential
 ```
 
-The task starts at boot, uses the release directory as its working directory, prevents duplicate instances, and retries a failed process five times at one-minute intervals. Reinstall the task when switching its immutable release path. The service account must have `Log on as a batch job`, read/execute access to the release and configuration, and only the data-directory permissions described above.
+The task starts at boot, uses the guarded `current` junction as its working directory, prevents duplicate instances, and retries a failed process five times at one-minute intervals. The service account must have `Log on as a batch job`, read/execute access to the release and configuration, and only the data-directory permissions described above.
 
 After startup, verify `https://<approved-name>/api/health` returns HTTP 200. Install the sealed audit export from `docs/AUDIT_LEDGER_RETENTION.md`, then install `scripts/install-monitor-task.ps1` and follow `docs/MONITORING_AND_INCIDENT_RESPONSE.md` to detect process/database outages, authentication failures, deadline-worker staleness, scanner failures, sensitive access, clock drift, backup failures, and stale audit exports.
 
 ## Release and rollback
 
-Deploy each Git commit into a new immutable release directory. Stop the service, apply forward-compatible migrations, switch the service path to the new release, start it, and run the authenticated smoke test. Keep the previous application release for rollback. Database rollback requires a tested restoration plan; never reverse migrations casually.
+Deploy each Git commit into a new immutable release directory and apply only forward-compatible migrations. Promote it with:
+
+```powershell
+.\scripts\promote-release.ps1 `
+  -ReleaseDirectory C:\PerformanceTracker\releases\<new-release-id>
+```
+
+The script verifies the generated package manifest and SHA-256 hashes, stops the application task, swaps only guarded directory junctions, restarts the task, and waits for loopback health. A failed health check automatically restores the previous junction and verifies recovery. It refuses paths outside the release root and refuses to replace ordinary directories. Keep the previous release until the rollback rehearsal and post-deployment observation period are complete. Database rollback requires a tested restoration plan; never reverse migrations casually.
 
 Record the deployed commit, migration number, deployment operator, approval, database backup identifier, health-check result, and rollback decision in the release log.
