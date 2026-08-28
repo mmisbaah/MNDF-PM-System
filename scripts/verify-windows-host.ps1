@@ -1,7 +1,7 @@
 param(
   [int]$ApplicationPort=3100,
   [int]$DatabasePort=5432,
-  [string[]]$RequiredTaskNames=@("Performance-Tracker-Scheduled-Jobs","Performance-Tracker-Evidence-Scanner","Performance-Tracker-Daily-Backup","Performance-Tracker-Audit-Export","Performance-Tracker-Operations-Monitor")
+  [string[]]$RequiredTaskNames=@("Performance-Tracker-Application","Performance-Tracker-Scheduled-Jobs","Performance-Tracker-Evidence-Scanner","Performance-Tracker-Daily-Backup","Performance-Tracker-Audit-Export","Performance-Tracker-Operations-Monitor")
 )
 $ErrorActionPreference="Stop"
 $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -21,7 +21,18 @@ if(-not$timeService-or$timeService.Status-ne"Running"){$failures.Add("Windows Ti
   elseif($timeStatus-notmatch'(?im)^Leap Indicator:\s*0\b'){$failures.Add("Windows Time reports an unsynchronized or warning leap indicator")}
   if($timeStatus-notmatch'(?im)^Last Successful Sync Time:\s*(?!unspecified)\S'){$failures.Add("Windows Time has no recorded successful synchronization")}
 }
-foreach($taskName in $RequiredTaskNames){$task=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue;if(-not$task){$failures.Add("Required scheduled task is missing: $taskName")}elseif($task.State-eq"Disabled"){$failures.Add("Required scheduled task is disabled: $taskName")}}
+foreach($taskName in $RequiredTaskNames){
+  $task=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+  if(-not$task){$failures.Add("Required scheduled task is missing: $taskName");continue}
+  if($task.State-eq"Disabled"){$failures.Add("Required scheduled task is disabled: $taskName")}
+  if($taskName-eq"Performance-Tracker-Application"){
+    if($task.State-ne"Running"){$failures.Add("Performance Tracker application task is not running")}
+    if($task.Settings.RestartCount-lt3){$failures.Add("Application task must have at least three bounded restart attempts")}
+    if([string]$task.Settings.MultipleInstances-ne"IgnoreNew"){$failures.Add("Application task must reject duplicate instances")}
+    if($task.Principal.UserId-in@("SYSTEM","NT AUTHORITY\SYSTEM","Administrator")){$failures.Add("Application task must use the dedicated non-administrator service account")}
+    if(-not(@($task.Triggers)|Where-Object{$_.CimClass.CimClassName-eq"MSFT_TaskBootTrigger"})){$failures.Add("Application task has no startup trigger")}
+  }
+}
 $result=[ordered]@{format="performance-tracker-windows-host-readiness-v1";status=if($failures.Count){"FAIL"}else{"PASS"};checkedAt=(Get-Date).ToUniversalTime().ToString("o");applicationPort=$ApplicationPort;databasePort=$DatabasePort;requiredTasks=$RequiredTaskNames;failures=$failures}
 $result|ConvertTo-Json -Depth 4
 if($failures.Count){throw ($failures-join[Environment]::NewLine)}

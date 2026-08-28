@@ -23,6 +23,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 15. Bounded database pool, timeout validation, pool-pressure monitoring, and 40-user capacity evidence
 16. Verified HTTPS redirect, trusted certificate lifetime, HSTS, suppressed server identity, and blocked internal proxy routes
 17. Verified Windows firewall profiles, loopback-only application/database listeners, synchronized system time, and enabled operations tasks
+18. Dedicated-account application auto-start with single-instance enforcement and bounded restart behavior
 
 A release fails if any check fails.
 

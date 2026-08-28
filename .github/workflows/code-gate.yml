@@ -37,6 +37,9 @@ jobs:
           $tokens=$null; $errors=$null
           [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/verify-windows-host.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
           if($errors.Count){$errors | ForEach-Object { Write-Error $_.Message }; exit 1}
+          $tokens=$null; $errors=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/install-application-task.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count){$errors | ForEach-Object { Write-Error $_.Message }; exit 1}
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test

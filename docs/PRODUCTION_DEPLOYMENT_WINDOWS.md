@@ -67,7 +67,17 @@ If public certificate issuance is unavailable, use Caddy internal TLS and distri
 
 ## Application service
 
-Register `scripts/start-production.ps1` through the approved Windows service manager using the dedicated service account and the protected environment file. Configure automatic restart with bounded backoff. The working directory must be the release directory.
+Install the application startup task from an elevated deployment PowerShell session. Windows prompts for the dedicated, non-administrator service-account credential; the installer passes it directly to Task Scheduler and never writes it to a file or process command argument.
+
+```powershell
+$serviceCredential = Get-Credential 'DOMAIN\PerformanceTrackerService'
+.\scripts\install-application-task.ps1 `
+  -ProjectDirectory C:\PerformanceTracker\releases\<release-id> `
+  -EnvironmentFile C:\PerformanceTracker\config\.env.production.local `
+  -ServiceCredential $serviceCredential
+```
+
+The task starts at boot, uses the release directory as its working directory, prevents duplicate instances, and retries a failed process five times at one-minute intervals. Reinstall the task when switching its immutable release path. The service account must have `Log on as a batch job`, read/execute access to the release and configuration, and only the data-directory permissions described above.
 
 After startup, verify `https://<approved-name>/api/health` returns HTTP 200. Install the sealed audit export from `docs/AUDIT_LEDGER_RETENTION.md`, then install `scripts/install-monitor-task.ps1` and follow `docs/MONITORING_AND_INCIDENT_RESPONSE.md` to detect process/database outages, authentication failures, deadline-worker staleness, scanner failures, sensitive access, clock drift, backup failures, and stale audit exports.
 

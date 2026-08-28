@@ -2,7 +2,7 @@
 
 Performance Tracker relies on the host operating system for the final network and time boundary. Before release, run `scripts/verify-windows-host.ps1` from an elevated authorized operations PowerShell session on the intended application host.
 
-The verifier fails when the Next.js or PostgreSQL port is absent or listens on a non-loopback address, any Windows Firewall profile is disabled, Windows Time is stopped or unsynchronized, or a required scheduling, scanning, backup, audit-export, or monitoring task is missing or disabled.
+The verifier fails when the Next.js or PostgreSQL port is absent or listens on a non-loopback address, any Windows Firewall profile is disabled, Windows Time is stopped or unsynchronized, or the application, scheduling, scanning, backup, audit-export, or monitoring task is missing or disabled.
 
 ```powershell
 .\scripts\verify-windows-host.ps1
