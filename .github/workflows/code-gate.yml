@@ -25,9 +25,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run accessibility:gate
+      - run: node --check scripts/browser-regression.mjs
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
-      - name: Reject high or critical production dependency vulnerabilities
-        run: pnpm audit --prod --audit-level high
+      - name: Reject high or critical dependency vulnerabilities
+        run: pnpm audit --audit-level high
       - run: pnpm run build

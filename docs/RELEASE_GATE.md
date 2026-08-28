@@ -14,6 +14,7 @@ $env:POSTGRES_ADMIN_URL = "postgresql://release_operator:...@127.0.0.1:5432/post
 $env:DATABASE_URL = "postgresql://mndf_pms_app:...@127.0.0.1:5432/postgres"
 $env:ACCEPTANCE_LOGIN_ID = "release-test-user"
 $env:ACCEPTANCE_PASSWORD = "temporary value from the controlled test account"
+$env:BROWSER_CHANNEL = "msedge" # organization-controlled Windows host
 
 .\scripts\release-gate.ps1 `
   -AcceptanceBaseUrl https://performance-tracker.internal `
@@ -25,7 +26,9 @@ $env:ACCEPTANCE_PASSWORD = "temporary value from the controlled test account"
 
 The script creates a database named only under the guarded `mndf_pms_release_verify_<timestamp>` pattern, applies every migration, runs constraint/RLS/audit gates, and removes that disposable database in `finally`. It never points destructive cleanup at a supplied production database name.
 
-The authenticated smoke test checks installation identity, security headers, database health, anonymous rejection, cross-origin rejection, PWA cache safety, login, session identity, and tenant workspace loading. Privileged MFA ceremonies remain attended acceptance tests and are not bypassed for automation.
+The authenticated API smoke checks installation identity, security headers, database health, anonymous rejection, cross-origin rejection, PWA cache safety, login, session identity, and tenant workspace loading. The browser regression then uses the same dummy account at a 390×844 viewport to verify the real login form, completed workspace loading, mobile overflow, primary navigation selection, console/server failures, and sign-out. On failure it writes a screenshot and redacted JSON result under the release-gate output directory. Privileged MFA ceremonies remain attended acceptance tests and are not bypassed for automation.
+
+Install the browser automation dependency during release-host provisioning. On the Windows staging host, set `BROWSER_CHANNEL=msedge` to use the organization-managed Edge installation. For isolated engineering environments using bundled Chromium, run `pnpm exec playwright install chromium` once after the frozen dependency installation.
 
 The restoration result must report `SUCCESS` and be no older than 31 days by default. Recovery keys are never passed to CI or the release gate.
 

@@ -162,7 +162,7 @@ export function PilotWorkspace({ principal }: { principal: Principal }) {
           </div>
         </div>
       </header>
-      <nav className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/95">
+      <nav aria-label="Workspace sections" className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/95">
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto p-2">
           {(
             [
@@ -188,6 +188,7 @@ export function PilotWorkspace({ principal }: { principal: Principal }) {
             <button
               key={id}
               onClick={() => setTab(id)}
+              aria-current={tab === id ? "page" : undefined}
               className={`flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-4 ${tab === id ? "bg-cyan-500 font-bold text-slate-950" : "text-slate-300"}`}
             >
               <Icon className="h-5 w-5 shrink-0" />

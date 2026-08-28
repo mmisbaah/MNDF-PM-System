@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
+    "browser:regression": "node scripts/browser-regression.mjs",
     "security:regression": "node scripts/security-regression.mjs",
     "capacity:smoke": "node scripts/capacity-smoke.mjs",
     "accessibility:gate": "node scripts/accessibility-static-gate.mjs",
@@ -36,6 +37,7 @@
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.11",
     "postcss": "8.5.23",
+    "playwright": "1.62.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3"
   }
