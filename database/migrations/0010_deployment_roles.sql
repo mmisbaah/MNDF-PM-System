@@ -8,6 +8,7 @@ REVOKE ALL ON SCHEMA public FROM PUBLIC;GRANT USAGE ON SCHEMA public TO mndf_pms
 GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO mndf_pms_runtime;
 GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO mndf_pms_runtime;
 REVOKE INSERT,UPDATE,DELETE ON audit_logs FROM mndf_pms_runtime;
+REVOKE DELETE ON retention_policy_versions,legal_holds,controlled_export_requests,record_disposal_requests,record_disposal_approvals FROM mndf_pms_runtime;
 REVOKE ALL ON FUNCTION write_audit_event(uuid,text,text,uuid,jsonb,jsonb,text,uuid,uuid,boolean) FROM PUBLIC,mndf_pms_runtime;
 REVOKE SELECT ON appraisal_comments FROM mndf_pms_runtime;
 GRANT SELECT ON member_visible_appraisal_comments,official_appraisal_current_version,official_appraisal_current_ratings TO mndf_pms_runtime;

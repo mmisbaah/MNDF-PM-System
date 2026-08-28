@@ -47,6 +47,7 @@ function requiredPermission(pathname: string, method: string): Permission | null
   if(pathname.includes("/reopen-authorizations"))return"appraisal.correction_authorize";
   if(pathname.startsWith("/api/templates"))return"template.manage";
   if(pathname.startsWith("/api/reports")&&method==="GET")return"report.read";
+  if(pathname.startsWith("/api/records-governance")&&method==="GET")return"audit.read";
   if(pathname.includes("/api/reports/operational/")&&pathname.endsWith("/transition")&&method==="POST")return null;
   if(pathname.startsWith("/api/corrections")&&pathname.endsWith("/transition"))return null;
   if(pathname.startsWith("/api/corrections"))return"appraisal.evaluate";

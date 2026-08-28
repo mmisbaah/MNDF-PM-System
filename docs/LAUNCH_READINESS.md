@@ -16,6 +16,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 8. Forty-user authenticated capacity test meeting the recorded latency and error thresholds
 9. December training-isolation gate and attended onboarding rehearsal record
 10. Validated operational-readiness record covering training, support ownership, incidents, rollback, and current Authorizer approval
+11. Approved records-retention policy versions and confirmed legal-hold/export/disposal custodians
 
 A release fails if any check fails.
 

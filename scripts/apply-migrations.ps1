@@ -26,6 +26,8 @@ foreach ($file in $owned) {
 if ($LASTEXITCODE -ne 0) { throw 'Runtime grant migration failed' }
 & psql $AdminDatabaseUrl -v ON_ERROR_STOP=1 -f (Join-Path $root 'database\tests\stage_1_1_gate.sql')
 if ($LASTEXITCODE -ne 0) { throw 'Stage 1.1 database gate failed' }
+& psql $AdminDatabaseUrl -v ON_ERROR_STOP=1 -f (Join-Path $root 'database\tests\records_lifecycle_gate.sql')
+if ($LASTEXITCODE -ne 0) { throw 'Records lifecycle database gate failed' }
 & psql $AdminDatabaseUrl -v ON_ERROR_STOP=1 -f (Join-Path $root 'database\tests\runtime_rls_smoke.sql')
 if ($LASTEXITCODE -ne 0) { throw 'Runtime RLS and audit smoke test failed' }
 & psql $ApplicationDatabaseUrl -v ON_ERROR_STOP=1 -c "SELECT current_user,rolbypassrls FROM pg_roles WHERE rolname=current_user"
