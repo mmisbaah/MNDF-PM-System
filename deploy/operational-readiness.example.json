@@ -1,0 +1,37 @@
+{
+  "format": "performance-tracker-operational-readiness-v1",
+  "organizationName": "REPLACE_ME",
+  "expectedPilotUsers": 40,
+  "trainedUsers": 0,
+  "accountability": {
+    "systemAuthorizer": "REPLACE_ME",
+    "systemAdministratorOperator": "REPLACE_ME",
+    "technicalOperator": "REPLACE_ME",
+    "incidentCoordinator": "REPLACE_ME"
+  },
+  "support": {
+    "primary": "REPLACE_ME",
+    "alternate": "REPLACE_ME",
+    "afterHoursProcedure": "REPLACE_ME"
+  },
+  "attendedScenarios": [
+    { "code": "MFA_ENROLLMENT", "status": "PENDING", "evidenceReference": "REPLACE_ME" },
+    { "code": "ADMIN_AUTHORIZATION", "status": "PENDING", "evidenceReference": "REPLACE_ME" },
+    { "code": "AUTHORIZER_HANDOVER", "status": "PENDING", "evidenceReference": "REPLACE_ME" },
+    { "code": "FULL_APPRAISAL_GRIEVANCE_CORRECTION", "status": "PENDING", "evidenceReference": "REPLACE_ME" },
+    { "code": "MOBILE_USABILITY", "status": "PENDING", "evidenceReference": "REPLACE_ME" },
+    { "code": "EVIDENCE_QUARANTINE", "status": "PENDING", "evidenceReference": "REPLACE_ME" },
+    { "code": "BACKUP_RESTORE", "status": "PENDING", "evidenceReference": "REPLACE_ME" }
+  ],
+  "openIncidents": { "severity1": 0, "severity2": 0 },
+  "rollback": {
+    "owner": "REPLACE_ME",
+    "targetCommit": "0000000",
+    "verifiedAt": "2026-12-01T00:00:00Z"
+  },
+  "approval": {
+    "systemAuthorizer": "REPLACE_ME",
+    "approvedAt": "2026-12-01T00:00:00Z"
+  }
+}
+

@@ -15,6 +15,7 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 7. Anonymous and authenticated browser/API regression using a dedicated dummy acceptance account
 8. Forty-user authenticated capacity test meeting the recorded latency and error thresholds
 9. December training-isolation gate and attended onboarding rehearsal record
+10. Validated operational-readiness record covering training, support ownership, incidents, rollback, and current Authorizer approval
 
 A release fails if any check fails.
 

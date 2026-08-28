@@ -12,6 +12,7 @@
     "acceptance:smoke": "node scripts/acceptance-smoke.mjs",
     "security:regression": "node scripts/security-regression.mjs",
     "capacity:smoke": "node scripts/capacity-smoke.mjs",
+    "readiness:validate": "node scripts/validate-operational-readiness.mjs",
     "backup:keygen": "node scripts/backup-crypto.mjs keygen",
     "release:code-gate": "powershell -NoProfile -File scripts/release-gate.ps1 -CodeOnly"
   },

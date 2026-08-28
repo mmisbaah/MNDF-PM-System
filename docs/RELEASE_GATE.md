@@ -19,7 +19,8 @@ $env:ACCEPTANCE_PASSWORD = "temporary value from the controlled test account"
   -AcceptanceBaseUrl https://performance-tracker.internal `
   -ApplicationRole mndf_pms_app `
   -PostgresBinDirectory "C:\Program Files\PostgreSQL\17\bin" `
-  -RestoreRehearsalResult C:\PerformanceTracker\recovery-results\latest-success.json
+  -RestoreRehearsalResult C:\PerformanceTracker\recovery-results\latest-success.json `
+  -OperationalReadinessRecord C:\PerformanceTracker\release\operational-readiness.json
 ```
 
 The script creates a database named only under the guarded `mndf_pms_release_verify_<timestamp>` pattern, applies every migration, runs constraint/RLS/audit gates, and removes that disposable database in `finally`. It never points destructive cleanup at a supplied production database name.
@@ -27,6 +28,8 @@ The script creates a database named only under the guarded `mndf_pms_release_ver
 The authenticated smoke test checks installation identity, security headers, database health, anonymous rejection, cross-origin rejection, PWA cache safety, login, session identity, and tenant workspace loading. Privileged MFA ceremonies remain attended acceptance tests and are not bypassed for automation.
 
 The restoration result must report `SUCCESS` and be no older than 31 days by default. Recovery keys are never passed to CI or the release gate.
+
+Copy `deploy/operational-readiness.example.json` outside the repository and complete it during December onboarding. The validator rejects placeholders, incomplete training, missing attended evidence, open severity-1 or severity-2 incidents, an unverified rollback target, or Authorizer approval older than 14 days.
 
 ## Result and approval
 

@@ -5,6 +5,7 @@ param(
   [string]$ApplicationRole="mndf_pms_app",
   [string]$PostgresBinDirectory="",
   [string]$RestoreRehearsalResult="",
+  [string]$OperationalReadinessRecord="",
   [string]$ResultDirectory="output\release-gates",
   [int]$MaximumRestoreAgeDays=31,
   [int]$CapacityDurationSeconds=60,
@@ -32,6 +33,8 @@ try{
     Invoke-GateStep "40-user authenticated pilot capacity" {$env:CAPACITY_BASE_URL=$AcceptanceBaseUrl;$env:CAPACITY_VIRTUAL_USERS="40";$env:CAPACITY_DURATION_SECONDS="$CapacityDurationSeconds";& node (Join-Path $PSScriptRoot "capacity-smoke.mjs");if($LASTEXITCODE-ne0){throw "Capacity smoke failed"}}
     if(-not$RestoreRehearsalResult){throw "RestoreRehearsalResult is required"};$restorePath=[System.IO.Path]::GetFullPath($RestoreRehearsalResult);if(-not(Test-Path -LiteralPath $restorePath)){throw "Restoration rehearsal result not found"}
     Invoke-GateStep "Recent restoration rehearsal" {$restore=Get-Content -LiteralPath $restorePath -Raw|ConvertFrom-Json;if($restore.status-ne"SUCCESS"){throw "Restoration rehearsal did not succeed"};$age=$started-([datetime]$restore.verifiedAt).ToUniversalTime();if($age.TotalDays-gt$MaximumRestoreAgeDays-or$age.TotalSeconds-lt0){throw "Restoration rehearsal is outside the permitted age"}}
+    if(-not$OperationalReadinessRecord){throw "OperationalReadinessRecord is required"};$readinessPath=[System.IO.Path]::GetFullPath($OperationalReadinessRecord);if(-not(Test-Path -LiteralPath $readinessPath)){throw "Operational readiness record not found"}
+    Invoke-GateStep "Training, attended acceptance, support, and launch approval" {& node (Join-Path $PSScriptRoot "validate-operational-readiness.mjs") $readinessPath;if($LASTEXITCODE-ne0){throw "Operational readiness validation failed"}}
   }
 }catch{$failure=$_}finally{
   if($dbName){& dropdb --maintenance-db=$AdminMaintenanceUrl --if-exists $dbName|Out-Null}
