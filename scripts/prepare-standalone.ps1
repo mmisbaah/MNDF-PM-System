@@ -1,22 +1,12 @@
 param([string]$ProjectDirectory = (Split-Path $PSScriptRoot -Parent))
 $ErrorActionPreference = "Stop"
 $project = [System.IO.Path]::GetFullPath($ProjectDirectory)
+. (Join-Path $PSScriptRoot 'release-source-check.ps1')
+$commit=Get-CleanReleaseCommit $project
 $standalone = Join-Path $project ".next\standalone"
 if (-not (Test-Path -LiteralPath (Join-Path $standalone "server.js"))) { throw "Run the production build before preparing the standalone package" }
-$staticTarget = Join-Path $standalone ".next\static"
-New-Item -ItemType Directory -Path $staticTarget -Force | Out-Null
-Copy-Item -Path (Join-Path $project ".next\static\*") -Destination $staticTarget -Recurse -Force
-$publicTarget = Join-Path $standalone "public"
-New-Item -ItemType Directory -Path $publicTarget -Force | Out-Null
-Copy-Item -Path (Join-Path $project "public\*") -Destination $publicTarget -Recurse -Force
-$commit=(& git -C $project rev-parse HEAD).Trim()
-if($LASTEXITCODE-ne0-or$commit-notmatch'^[0-9a-f]{40}$'){throw "A full Git commit is required for the release manifest"}
-$manifest=[ordered]@{
-  format="performance-tracker-release-package-v1"
-  commit=$commit
-  preparedAt=(Get-Date).ToUniversalTime().ToString("o")
-  serverSha256=(Get-FileHash -LiteralPath (Join-Path $standalone "server.js") -Algorithm SHA256).Hash.ToLowerInvariant()
-  packageSha256=(Get-FileHash -LiteralPath (Join-Path $standalone "package.json") -Algorithm SHA256).Hash.ToLowerInvariant()
-}
-$manifest|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $standalone "release-manifest.json") -Encoding utf8
+& node (Join-Path $PSScriptRoot 'release-build-provenance.mjs') verify $project $commit
+if($LASTEXITCODE -ne 0){throw 'Build provenance rejected. Run release-build.ps1 from a fresh clean checkout.'}
+if((Get-CleanReleaseCommit $project) -ne $commit){throw 'Release source changed during packaging'}
+# Do not regenerate the manifest: it is bound to the completed release build.
 Write-Host "Standalone package prepared at $standalone"

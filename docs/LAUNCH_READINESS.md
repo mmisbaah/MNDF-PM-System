@@ -24,10 +24,12 @@ Run `scripts/release-gate.ps1` as documented in `docs/RELEASE_GATE.md`. It execu
 16. Verified HTTPS redirect, trusted certificate lifetime, HSTS, suppressed server identity, and blocked internal proxy routes
 17. Verified Windows firewall profiles, loopback-only application/database listeners, synchronized system time, and enabled operations tasks
 18. Dedicated-account application auto-start with single-instance enforcement and bounded restart behavior
-19. Integrity-verified release promotion with guarded junction switching, health verification, automatic rollback, and immutable operation logging
+19. Integrity-verified release promotion with guarded junction switching, health verification, automatic rollback, and flushed start/completion operation journaling (local logs are not immutable)
 20. Ed25519-signed release manifest verified against an independently pinned production public key before promotion
 21. Protected non-inheriting production ACLs with explicit least-privilege service-account access and no broad secret/evidence access
 22. Protected UTC application runtime logs with credential redaction, watchdog size checks, and retention-policy preservation
+23. Combined Windows deployment regression gate (`scripts/deployment-regression-gate.ps1`), with CI coverage under Windows PowerShell and PowerShell Core; not a substitute for an attended production rehearsal
+24. Release packaging from a clean committed repository root, with staged, unstaged, untracked and dirty-submodule source rejected before manifest creation
 
 A release fails if any check fails.
 

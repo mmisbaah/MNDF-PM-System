@@ -16,6 +16,8 @@ $projectNormalized=$project.TrimEnd('\')
 if($logs-eq$projectNormalized-or$logs.StartsWith("$projectNormalized\",[StringComparison]::OrdinalIgnoreCase)){throw "Application logs must be outside the release directory"}
 New-Item -ItemType Directory -Path $logs -Force|Out-Null
 $started=(Get-Date).ToUniversalTime();$logPath=Join-Path $logs "application-$($started.ToString('yyyyMMddTHHmmssZ'))-$PID.log"
+& node (Join-Path $project "scripts\validate-production-env.mjs") --config-file $envPath
+if ($LASTEXITCODE -ne 0) { throw "Production configuration file validation failed" }
 & node "--env-file=$envPath" (Join-Path $project "scripts\validate-production-env.mjs")
 if ($LASTEXITCODE -ne 0) { throw "Production environment validation failed" }
 Push-Location $standalone

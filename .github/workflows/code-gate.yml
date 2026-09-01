@@ -9,6 +9,20 @@ permissions:
   contents: read
 
 jobs:
+  windows-deployment-guards:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Complete deployment regression gate (Windows PowerShell)
+        shell: powershell
+        run: .\scripts\deployment-regression-gate.ps1
+      - name: Complete deployment regression gate (PowerShell Core)
+        shell: pwsh
+        run: .\scripts\deployment-regression-gate.ps1
   code-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -27,9 +41,13 @@ jobs:
       - run: pnpm run accessibility:gate
       - run: node --check scripts/browser-regression.mjs
       - run: node --check scripts/validate-production-env.mjs
+      - run: node --test scripts/validate-production-env.test.mjs
       - run: node --check scripts/verify-tls-boundary.mjs
       - run: node --check scripts/release-signing.mjs
       - run: pnpm run release-signing:selftest
+      - run: node --test scripts/release-signing.test.mjs
+      - run: node --test scripts/release-integrity.test.mjs
+      - run: node --test scripts/release-build-provenance.test.mjs
       - name: Parse production secret initializer
         shell: pwsh
         run: |
@@ -63,6 +81,7 @@ jobs:
           $redacted=Protect-ApplicationLogLine $sample
           if($redacted -match 'db-password|abc\.def\.ghi|hunter2|topsecret'){throw 'A representative credential survived log redaction'}
           if(([regex]::Matches($redacted,'\[REDACTED\]')).Count -ne 4){throw 'Expected four redacted credential values'}
+      - run: pnpm run lint:progress:test
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
@@ -72,3 +91,6 @@ jobs:
       - name: Prepare integrity-manifested standalone package
         shell: pwsh
         run: .\scripts\prepare-standalone.ps1
+      - name: Release source provenance regression
+        shell: pwsh
+        run: .\scripts\test-release-source-check.ps1

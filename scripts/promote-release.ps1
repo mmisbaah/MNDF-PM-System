@@ -10,6 +10,8 @@ param(
   [switch]$Initialize
 )
 $ErrorActionPreference="Stop"
+. (Join-Path $PSScriptRoot "deployment-task-guards.ps1")
+. (Join-Path $PSScriptRoot "deployment-journal.ps1")
 $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
 if(-not$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw "Release promotion must run from an elevated deployment PowerShell session"}
 $root=[IO.Path]::GetFullPath($ReleasesRoot).TrimEnd('\')
@@ -32,26 +34,30 @@ if($actualPublicKeySha256-ne$TrustedPublicKeySha256.ToLowerInvariant()){throw "R
 & node (Join-Path $PSScriptRoot "release-signing.mjs") verify $manifestPath $signaturePath $publicKeyPath
 if($LASTEXITCODE-ne0){throw "Release signature verification failed"}
 $manifest=Get-Content -LiteralPath $manifestPath -Raw|ConvertFrom-Json
-if($manifest.format-ne"performance-tracker-release-package-v1"-or$manifest.commit-notmatch'^[0-9a-f]{40}$'){throw "Release manifest is invalid"}
-foreach($item in @(@{path=(Join-Path $standalone "server.js");expected=$manifest.serverSha256},@{path=(Join-Path $standalone "package.json");expected=$manifest.packageSha256})){
-  if(-not(Test-Path -LiteralPath $item.path)){throw "Release package file is missing: $($item.path)"}
-  $actual=(Get-FileHash -LiteralPath $item.path -Algorithm SHA256).Hash.ToLowerInvariant()
-  if($actual-ne$item.expected){throw "Release package integrity verification failed: $($item.path)"}
-}
+& node (Join-Path $PSScriptRoot "release-integrity.mjs") verify $standalone (Join-Path $release 'scripts')
+if($LASTEXITCODE-ne0){throw "Full package integrity verification failed"}
 $health=[Uri]$HealthUrl
 if($health.Scheme-ne"http"-or$health.Host-notin@("127.0.0.1","localhost","::1")){throw "HealthUrl must use loopback HTTP"}
 function New-VerifiedJunction([string]$Path,[string]$Target){New-Item -ItemType Junction -Path $Path -Target $Target|Out-Null;$item=Get-Item -LiteralPath $Path;if($item.LinkType-ne"Junction"){throw "Failed to create guarded release junction"}}
 function Assert-Junction([string]$Path){$item=Get-Item -LiteralPath $Path -Force;if($item.LinkType-ne"Junction"){throw "Refusing to replace a path that is not a junction: $Path"};$item}
-function Wait-Healthy(){for($attempt=1;$attempt-le15;$attempt++){try{$response=Invoke-WebRequest -UseBasicParsing -Uri $HealthUrl -TimeoutSec 5;if($response.StatusCode-eq200){return}}catch{};Start-Sleep -Seconds 2};throw "Application health check did not pass within 30 seconds"}
-$logParent=Split-Path -Parent ([IO.Path]::GetFullPath($OperationLog));New-Item -ItemType Directory -Path $logParent -Force|Out-Null
+function Wait-Healthy(){for($attempt=1;$attempt-le15;$attempt++){try{$response=Invoke-WebRequest -UseBasicParsing -Uri $HealthUrl -TimeoutSec 5;if($response.StatusCode-eq200){return}}catch{};Start-Sleep -Seconds 2};throw "Application health check failed after 15 attempts (5-second request timeout, 2-second retry delay)"}
+$logParent=Split-Path -Parent ([IO.Path]::GetFullPath($OperationLog))
+$logPath=[IO.Path]::GetFullPath($OperationLog)
+if($logPath.StartsWith("$root\",[StringComparison]::OrdinalIgnoreCase)-or$logPath.StartsWith("$current\",[StringComparison]::OrdinalIgnoreCase)-or$logPath-eq$current){throw 'Deployment journal must be outside releases and CurrentLink'}
+New-Item -ItemType Directory -Path $logParent -Force|Out-Null
 $started=(Get-Date).ToUniversalTime();$status="FAILED";$previousTarget=$null;$temporary="$current.next.$([guid]::NewGuid().ToString('N'))";$previous="$current.previous.$([guid]::NewGuid().ToString('N'))"
+$operationId=[guid]::NewGuid().ToString('N')
+$journal=Open-DeploymentJournal $logPath
+try {
+  Write-DeploymentJournal $journal ([ordered]@{format='performance-tracker-deployment-operation-v2';operationId=$operationId;status='STARTED';occurredAt=$started.ToString('o');releaseCommit=$manifest.commit;releaseDirectory=$release;currentLink=$current;operator=[Security.Principal.WindowsIdentity]::GetCurrent().Name})
+} catch {$journal.Dispose();throw}
 try{
   if($Initialize){if(Test-Path -LiteralPath $current){throw "CurrentLink already exists"};New-VerifiedJunction $current $release;$status="INITIALIZED";return}
   $currentItem=Assert-Junction $current;$previousTarget=[string]$currentItem.Target
   $task=Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
   if(($task.Actions.Arguments-join' ') -notlike"*$current*"){throw "Application task is not configured against the stable CurrentLink"}
   New-VerifiedJunction $temporary $release
-  Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+  Stop-DeploymentApplication -TaskName $TaskName -Port $health.Port
   Rename-Item -LiteralPath $current -NewName (Split-Path -Leaf $previous)
   Rename-Item -LiteralPath $temporary -NewName (Split-Path -Leaf $current)
   Start-ScheduledTask -TaskName $TaskName;Wait-Healthy
@@ -60,7 +66,8 @@ try{
 }catch{
   $failure=$_
   if(-not$Initialize-and(Test-Path -LiteralPath $previous)){
-    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    $status="ROLLBACK_FAILED"
+    Stop-DeploymentApplication -TaskName $TaskName -Port $health.Port
     if(Test-Path -LiteralPath $current){$new=Assert-Junction $current;Remove-Item -LiteralPath $new.FullName -Force}
     Rename-Item -LiteralPath $previous -NewName (Split-Path -Leaf $current)
     Start-ScheduledTask -TaskName $TaskName;Wait-Healthy
@@ -68,7 +75,11 @@ try{
   }
   throw $failure
 }finally{
-  if(Test-Path -LiteralPath $temporary){$temp=Assert-Junction $temporary;Remove-Item -LiteralPath $temp.FullName -Force}
-  $entry=[ordered]@{format="performance-tracker-deployment-operation-v1";status=$status;occurredAt=$started.ToString("o");releaseCommit=$manifest.commit;releaseDirectory=$release;previousTarget=$previousTarget;operator=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
-  Add-Content -LiteralPath $OperationLog -Value ($entry|ConvertTo-Json -Compress) -Encoding utf8
+  $cleanupFailed=$false
+  try {if(Test-Path -LiteralPath $temporary){$temp=Assert-Junction $temporary;Remove-Item -LiteralPath $temp.FullName -Force}} catch {$cleanupFailed=$true}
+  try {
+    $entry=[ordered]@{format="performance-tracker-deployment-operation-v2";operationId=$operationId;status=$status;startedAt=$started.ToString('o');occurredAt=(Get-Date).ToUniversalTime().ToString('o');releaseCommit=$manifest.commit;releaseDirectory=$release;currentLink=$current;previousTarget=$previousTarget;cleanupFailed=$cleanupFailed;operator=[Security.Principal.WindowsIdentity]::GetCurrent().Name}
+    try {Write-DeploymentJournal $journal $entry} catch {throw "Deployment ended with status $status but its terminal journal record could not be persisted. Inspect CurrentLink and service health before retrying. Operation: $operationId"}
+  } finally {$journal.Dispose()}
+  if($cleanupFailed){throw "Deployment ended with status $status; temporary junction cleanup requires operator review. Operation: $operationId"}
 }

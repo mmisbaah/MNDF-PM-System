@@ -1,5 +1,6 @@
 import { createHash, createPrivateKey, generateKeyPairSync, sign, verify } from "node:crypto";
 import { access, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 const [command, ...args] = process.argv.slice(2);
 const passphrase = process.env.RELEASE_SIGNING_KEY_PASSPHRASE ?? "";
@@ -29,14 +30,20 @@ function verifyEnvelope(manifest, envelope, publicKey) {
 if (command === "keygen") {
   const [privatePath, publicPath] = args;
   if (!privatePath || !publicPath) throw new Error("Usage: keygen <encrypted-private-key> <public-key>");
+  const normalize = path => process.platform === 'win32' ? resolve(path).toLowerCase() : resolve(path);
+  if (normalize(privatePath) === normalize(publicPath)) throw new Error('Private and public key output paths must differ');
   if (passphrase.length < 20) throw new Error("RELEASE_SIGNING_KEY_PASSPHRASE must contain at least 20 characters");
   await mustNotExist(privatePath); await mustNotExist(publicPath);
   const keys = generateKeyPairSync("ed25519", {
     privateKeyEncoding: { type: "pkcs8", format: "pem", cipher: "aes-256-cbc", passphrase },
     publicKeyEncoding: { type: "spki", format: "pem" },
   });
-  await writeFile(privatePath, keys.privateKey, { mode: 0o600 });
-  await writeFile(publicPath, keys.publicKey, { mode: 0o644 });
+  await writeFile(privatePath, keys.privateKey, { mode: 0o600, flag: 'wx' });
+  try {
+    await writeFile(publicPath, keys.publicKey, { mode: 0o644, flag: 'wx' });
+  } catch {
+    throw new Error('Public key creation failed. The newly created encrypted private key is preserved; review the incomplete pair before retrying with new paths.');
+  }
   console.log("Release signing key pair created. Move the encrypted private key to offline release custody.");
 } else if (command === "sign") {
   const [manifestPath, privatePath, signaturePath] = args;
@@ -45,7 +52,7 @@ if (command === "keygen") {
   await mustNotExist(signaturePath);
   const manifest = await readFile(manifestPath);
   const privateKey = createPrivateKey({ key: await readFile(privatePath), format: "pem", passphrase });
-  await writeFile(signaturePath, `${JSON.stringify(signatureEnvelope(manifest, privateKey), null, 2)}\n`, { mode: 0o644 });
+  await writeFile(signaturePath, `${JSON.stringify(signatureEnvelope(manifest, privateKey), null, 2)}\n`, { mode: 0o644, flag: 'wx' });
   console.log(`Signed manifest SHA-256 ${digest(manifest)}`);
 } else if (command === "verify") {
   const [manifestPath, signaturePath, publicPath] = args;

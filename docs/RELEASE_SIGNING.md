@@ -25,3 +25,24 @@ Remove-Item Env:RELEASE_SIGNING_KEY_PASSPHRASE
 Transfer the immutable release package and detached signature together. `promote-release.ps1` requires `-TrustedPublicKeySha256` from the approved readiness record, checks that the key is outside the releases directory, verifies its fingerprint, and then verifies the signature before it stops or switches anything. A missing signature, changed manifest, substituted public key, invalid signature, mismatched package hash, or unrecognized signature format blocks promotion.
 
 Rotate the signing key after suspected compromise or under the organization's approved cryptographic schedule. Promotion must remain paused while the pinned public key is changed through an independently approved deployment action. Preserve old public keys with historical release evidence; never use them to approve new packages.
+
+## Output safety and partial failures
+
+Key and signature outputs use exclusive creation (`wx`), not an existence check
+followed by an overwriting write. A concurrent creator causes failure rather than
+replacement. Private and public key paths must be different. Existing outputs
+are not deleted or replaced automatically; choose new output paths for retries.
+
+Key-pair creation is not a two-file transaction. If public-key creation fails
+after the encrypted private key has been written, that private key is preserved
+and the command fails. Do not deploy an incomplete pair. Have the key custodian
+review it and generate a complete pair at fresh paths. A crash or disk failure
+may likewise leave a partial output: verify the completed pair/signature before
+use, rather than treating file existence as success.
+
+Run `node --test scripts/release-signing.test.mjs` for disposable-key tests of
+existing-file preservation, concurrent signing, mismatched-manifest rejection,
+same-path rejection and partial-pair preservation. These tests do not access the
+real signing keys. Use a protected local filesystem for custody: exclusive-create
+semantics on network shares require separate verification. On Windows, the file
+mode bits do not replace Windows ACLs; protect the custody directory beforehand.
