@@ -38,7 +38,10 @@ Name: "{app}\logs"
 Name: "{app}\releases"
 
 [Files]
-Source: "{#ReleaseSource}\*"; DestDir: "{app}\releases\{#ReleaseId}"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "{#ReleaseSource}\.next\standalone\*"; DestDir: "{app}\releases\{#ReleaseId}\.next\standalone"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "{#ReleaseSource}\scripts\*"; DestDir: "{app}\releases\{#ReleaseId}\scripts"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "{#ReleaseSource}\database\migrations\*"; DestDir: "{app}\releases\{#ReleaseId}\database\migrations"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "{#ReleaseSource}\deploy\*"; DestDir: "{app}\releases\{#ReleaseId}\deploy"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleasePublicKey}"; DestDir: "{app}\config"; DestName: "release-signing-public.pem"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "assets\complete-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "assets\repair-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
