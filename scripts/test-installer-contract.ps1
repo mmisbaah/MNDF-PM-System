@@ -9,7 +9,8 @@ Assert-Match $iss 'PrivilegesRequired=admin' 'Installer must require an approved
 Assert-Match $iss 'uninsneveruninstall' 'Installer must retain immutable releases and protected configuration during uninstall'
 Assert-Match $iss '\{#ReleaseSource\}\\\.next\\standalone\\\*' 'Installer must package the prepared standalone runtime'
 Assert-Match $iss '\{#ReleaseSource\}\\scripts\\\*' 'Installer must package operational helpers'
-Assert-Match $iss '\{#NodeRuntimeSource\}\\\*' 'Installer must package the approved portable Node.js runtime'
+Assert-Match $iss '\{#NodeRuntimeSource\}\\node\.exe' 'Installer must package the approved portable Node.js executable'
+Assert-Match $iss '\{#NodeRuntimeSource\}\\LICENSE' 'Installer must package the Node.js license'
 if($iss-match'Source:\s*"\{#ReleaseSource\}\\\*"'){throw 'Installer must not package the repository root, source tree, caches, or development dependencies'}
 Assert-Match $iss 'ExecutionPolicy AllSigned' 'Installer helpers must run under AllSigned policy'
 Assert-Match $builder 'Get-AuthenticodeSignature' 'Builder must reject unsigned production helpers'

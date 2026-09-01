@@ -46,7 +46,8 @@ Source: "{#ReleaseSource}\scripts\*"; DestDir: "{app}\releases\{#ReleaseId}\scri
 Source: "{#ReleaseSource}\database\migrations\*"; DestDir: "{app}\releases\{#ReleaseId}\database\migrations"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleaseSource}\deploy\*"; DestDir: "{app}\releases\{#ReleaseId}\deploy"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleasePublicKey}"; DestDir: "{app}\config"; DestName: "release-signing-public.pem"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "{#NodeRuntimeSource}\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "{#NodeRuntimeSource}\node.exe"; DestDir: "{app}\runtime"; Flags: ignoreversion uninsneveruninstall
+Source: "{#NodeRuntimeSource}\LICENSE"; DestDir: "{app}\runtime"; DestName: "NODE-LICENSE"; Flags: ignoreversion uninsneveruninstall
 Source: "assets\complete-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "assets\repair-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "assets\remove-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
