@@ -2,7 +2,7 @@
 
 The installer places one immutable, signed release under `C:\PerformanceTracker\releases`. It never embeds or fabricates database passwords, MFA keys, service credentials, TLS private keys, release-signing private keys, or organization records.
 
-The payload is allowlisted to the prepared standalone runtime, operational scripts, database migrations, and deployment templates. Repository metadata, source-only files, build caches, test output, and development dependencies are excluded.
+The payload is allowlisted to the prepared standalone application, a pinned portable Node.js 24 runtime (including its license), operational scripts, database migrations, and deployment templates. Repository metadata, source-only files, build caches, test output, and development dependencies are excluded.
 
 Production compilation requires:
 

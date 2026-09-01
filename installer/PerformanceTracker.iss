@@ -10,6 +10,9 @@
 #ifndef ReleasePublicKey
   #error ReleasePublicKey is required
 #endif
+#ifndef NodeRuntimeSource
+  #error NodeRuntimeSource must identify the approved portable Node.js runtime
+#endif
 
 [Setup]
 AppId={{9A6D70E4-672D-4B1C-8C40-828942719A1A}
@@ -43,6 +46,7 @@ Source: "{#ReleaseSource}\scripts\*"; DestDir: "{app}\releases\{#ReleaseId}\scri
 Source: "{#ReleaseSource}\database\migrations\*"; DestDir: "{app}\releases\{#ReleaseId}\database\migrations"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleaseSource}\deploy\*"; DestDir: "{app}\releases\{#ReleaseId}\deploy"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleasePublicKey}"; DestDir: "{app}\config"; DestName: "release-signing-public.pem"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "{#NodeRuntimeSource}\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "assets\complete-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "assets\repair-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 Source: "assets\remove-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion

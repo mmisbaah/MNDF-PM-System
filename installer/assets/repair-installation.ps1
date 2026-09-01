@@ -12,7 +12,9 @@ $release=[string]$item.Target
 foreach($required in @('.next\standalone\server.js','.next\standalone\release-manifest.json','.next\standalone\release-manifest.sig.json','scripts\start-production.ps1')){
   if(-not(Test-Path -LiteralPath (Join-Path $release $required))){throw "Current release is incomplete: $required"}
 }
-& node (Join-Path $release 'scripts\validate-production-env.mjs') --config-file $config
+$node=Join-Path $root 'runtime\node.exe'
+if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Bundled Node.js runtime is missing; reinstall from the approved installer'}
+& $node (Join-Path $release 'scripts\validate-production-env.mjs') --config-file $config
 if($LASTEXITCODE-ne0){throw 'Protected production configuration failed validation'}
 & (Join-Path $release 'scripts\verify-production-acls.ps1') -ReleaseDirectory $release -ConfigDirectory (Join-Path $root 'config') -EvidenceDirectory (Join-Path $root 'evidence') -QuarantineDirectory (Join-Path $root 'quarantine') -LogDirectory (Join-Path $root 'logs')
 if($LASTEXITCODE-ne0){throw 'Production ACL verification failed'}

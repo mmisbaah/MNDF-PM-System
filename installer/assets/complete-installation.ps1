@@ -16,9 +16,11 @@ $actual=(Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.ToLowerInv
 if($actual-ne$TrustedPublicKeySha256.ToLowerInvariant()){throw 'Installed release public key fingerprint does not match the installer build record'}
 $manifest=Join-Path $release '.next\standalone\release-manifest.json'
 $signature=Join-Path $release '.next\standalone\release-manifest.sig.json'
-& node (Join-Path $release 'scripts\release-signing.mjs') verify $manifest $signature $publicKey
+$node=Join-Path $root 'runtime\node.exe'
+if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Bundled Node.js runtime is missing'}
+& $node (Join-Path $release 'scripts\release-signing.mjs') verify $manifest $signature $publicKey
 if($LASTEXITCODE-ne0){throw 'Installed release signature verification failed'}
-& node (Join-Path $release 'scripts\release-integrity.mjs') verify (Join-Path $release '.next\standalone') (Join-Path $release 'scripts')
+& $node (Join-Path $release 'scripts\release-integrity.mjs') verify (Join-Path $release '.next\standalone') (Join-Path $release 'scripts')
 if($LASTEXITCODE-ne0){throw 'Installed package integrity verification failed'}
 $config=Join-Path $root 'config\.env.production.local'
 Write-Host 'Performance Tracker files are installed. Secure host provisioning is attended and does not store credentials in installer arguments.'
