@@ -11,13 +11,8 @@ if (-not (Test-Path -LiteralPath $envPath)) { throw "Protected production enviro
 $standalone = Join-Path $project ".next\standalone"
 $server = Join-Path $standalone "server.js"
 if (-not (Test-Path -LiteralPath $server)) { throw "Prepared standalone server not found. Run build and prepare-standalone.ps1 first." }
-$installRoot=Split-Path (Split-Path $project -Parent) -Parent
-$bundledNode=Join-Path $installRoot 'runtime\node.exe'
-if(-not$NodeExecutable){
-  if(Test-Path -LiteralPath $bundledNode -PathType Leaf){$NodeExecutable=$bundledNode}
-  else{$nodeCommand=Get-Command node.exe -ErrorAction SilentlyContinue;if($nodeCommand){$NodeExecutable=$nodeCommand.Source}}
-}
-if(-not$NodeExecutable-or-not(Test-Path -LiteralPath $NodeExecutable -PathType Leaf)){throw 'Approved Node.js runtime was not found'}
+. (Join-Path $PSScriptRoot 'resolve-node-runtime.ps1')
+$NodeExecutable=Resolve-PerformanceTrackerNode -ProjectDirectory $project -ExplicitPath $NodeExecutable
 . (Join-Path $PSScriptRoot "application-log-redaction.ps1")
 $logs=[IO.Path]::GetFullPath($LogDirectory)
 $projectNormalized=$project.TrimEnd('\')

@@ -11,6 +11,7 @@ param(
 $ErrorActionPreference="Stop"
 . (Join-Path $PSScriptRoot 'protected-secret-file.ps1')
 . (Join-Path $PSScriptRoot 'serialize-production-env.ps1')
+$project=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'));. (Join-Path $PSScriptRoot 'resolve-node-runtime.ps1');$node=Resolve-PerformanceTrackerNode -ProjectDirectory $project
 $target=[IO.Path]::GetFullPath($OutputPath)
 $operator=[Security.Principal.WindowsIdentity]::GetCurrent().Name
 if(Test-Path -LiteralPath $target){throw "Refusing to overwrite an existing production environment file: $target"}
@@ -31,7 +32,7 @@ $entries=[ordered]@{
 $content=ConvertTo-ProductionEnvironmentFile $entries
 Write-ProtectedSecretFile -Path $target -Content $content -ServiceAccount $ServiceAccount -Administrators @('S-1-5-18','S-1-5-32-544',$DeploymentAdministrators,$operator) -Validate {
   param($candidate)
-  & node (Join-Path $PSScriptRoot "validate-production-env.mjs") --config-file $candidate
+  & $node (Join-Path $PSScriptRoot "validate-production-env.mjs") --config-file $candidate
   if($LASTEXITCODE-ne0){throw 'Generated production environment failed validation'}
 }
 Write-Output "Production environment created and validated at $target. Secret values were not printed."

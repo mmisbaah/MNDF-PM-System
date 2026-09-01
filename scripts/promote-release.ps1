@@ -12,6 +12,7 @@ param(
 $ErrorActionPreference="Stop"
 . (Join-Path $PSScriptRoot "deployment-task-guards.ps1")
 . (Join-Path $PSScriptRoot "deployment-journal.ps1")
+$project=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'));. (Join-Path $PSScriptRoot 'resolve-node-runtime.ps1');$node=Resolve-PerformanceTrackerNode -ProjectDirectory $project
 $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
 if(-not$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw "Release promotion must run from an elevated deployment PowerShell session"}
 $root=[IO.Path]::GetFullPath($ReleasesRoot).TrimEnd('\')
@@ -31,10 +32,10 @@ if($publicKeyPath.StartsWith("$root\",[StringComparison]::OrdinalIgnoreCase)){th
 if($TrustedPublicKeySha256-notmatch'^[0-9a-fA-F]{64}$'){throw "TrustedPublicKeySha256 must be an independently recorded SHA-256 fingerprint"}
 $actualPublicKeySha256=(Get-FileHash -LiteralPath $publicKeyPath -Algorithm SHA256).Hash.ToLowerInvariant()
 if($actualPublicKeySha256-ne$TrustedPublicKeySha256.ToLowerInvariant()){throw "Release public key fingerprint does not match the independently trusted value"}
-& node (Join-Path $PSScriptRoot "release-signing.mjs") verify $manifestPath $signaturePath $publicKeyPath
+& $node (Join-Path $PSScriptRoot "release-signing.mjs") verify $manifestPath $signaturePath $publicKeyPath
 if($LASTEXITCODE-ne0){throw "Release signature verification failed"}
 $manifest=Get-Content -LiteralPath $manifestPath -Raw|ConvertFrom-Json
-& node (Join-Path $PSScriptRoot "release-integrity.mjs") verify $standalone (Join-Path $release 'scripts')
+& $node (Join-Path $PSScriptRoot "release-integrity.mjs") verify $standalone (Join-Path $release 'scripts')
 if($LASTEXITCODE-ne0){throw "Full package integrity verification failed"}
 $health=[Uri]$HealthUrl
 if($health.Scheme-ne"http"-or$health.Host-notin@("127.0.0.1","localhost","::1")){throw "HealthUrl must use loopback HTTP"}

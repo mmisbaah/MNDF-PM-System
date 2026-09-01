@@ -11,6 +11,7 @@ param(
 )
 $ErrorActionPreference="Stop"
 $project=[System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+. (Join-Path $PSScriptRoot 'resolve-node-runtime.ps1');$node=Resolve-PerformanceTrackerNode -ProjectDirectory $project
 if(-not $DatabaseUrl){throw "BACKUP_DATABASE_URL is required"}
 $publicKey=[System.IO.Path]::GetFullPath($PublicKeyFile);if(-not(Test-Path -LiteralPath $publicKey)){throw "Backup public key not found"}
 $offHost=[System.IO.Path]::GetFullPath($OffHostDirectory);$local=[System.IO.Path]::GetFullPath((Join-Path $project $LocalDirectory));$evidence=[System.IO.Path]::GetFullPath((Join-Path $project $EvidenceDirectory))
@@ -26,8 +27,8 @@ try{
   & $pgDump --dbname=$DatabaseUrl --format=custom --compress=9 --no-owner --no-privileges --file=$dump;if($LASTEXITCODE-ne0){throw "pg_dump failed with exit code $LASTEXITCODE"}
   if(Test-Path -LiteralPath $evidence){& tar -czf $archive -C $evidence .}else{$empty=Join-Path $staging "empty-evidence";New-Item -ItemType Directory -Path $empty|Out-Null;& tar -czf $archive -C $empty .}
   if($LASTEXITCODE-ne0){throw "Evidence archive creation failed"}
-  & node $crypto encrypt $dump $dbEncrypted $publicKey;if($LASTEXITCODE-ne0){throw "Database encryption failed"}
-  & node $crypto encrypt $archive $evidenceEncrypted $publicKey;if($LASTEXITCODE-ne0){throw "Evidence encryption failed"}
+  & $node $crypto encrypt $dump $dbEncrypted $publicKey;if($LASTEXITCODE-ne0){throw "Database encryption failed"}
+  & $node $crypto encrypt $archive $evidenceEncrypted $publicKey;if($LASTEXITCODE-ne0){throw "Evidence encryption failed"}
   Remove-Item -LiteralPath $dump,$archive
   $dbInfo=Get-Item -LiteralPath $dbEncrypted;$evidenceInfo=Get-Item -LiteralPath $evidenceEncrypted
   $manifest=[ordered]@{format="performance-tracker-backup-set-v1";createdAt=(Get-Date).ToUniversalTime().ToString("o");database=@{file=$dbInfo.Name;bytes=$dbInfo.Length;sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $dbInfo.FullName).Hash.ToLowerInvariant()};evidence=@{file=$evidenceInfo.Name;bytes=$evidenceInfo.Length;sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $evidenceInfo.FullName).Hash.ToLowerInvariant()}}
