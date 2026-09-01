@@ -1,7 +1,8 @@
 param(
   [Parameter(Mandatory=$true)][string]$InstallRoot,
   [Parameter(Mandatory=$true)][string]$ReleaseId,
-  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedPublicKeySha256
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedPublicKeySha256,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedNodeRuntimeSha256
 )
 $ErrorActionPreference='Stop'
 $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -18,6 +19,8 @@ $manifest=Join-Path $release '.next\standalone\release-manifest.json'
 $signature=Join-Path $release '.next\standalone\release-manifest.sig.json'
 $node=Join-Path $root 'runtime\node.exe'
 if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Bundled Node.js runtime is missing'}
+$actualNodeHash=(Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash.ToLowerInvariant()
+if($actualNodeHash-ne$TrustedNodeRuntimeSha256.ToLowerInvariant()){throw 'Bundled Node.js runtime fingerprint does not match the installer build record'}
 & $node (Join-Path $release 'scripts\release-signing.mjs') verify $manifest $signature $publicKey
 if($LASTEXITCODE-ne0){throw 'Installed release signature verification failed'}
 & $node (Join-Path $release 'scripts\release-integrity.mjs') verify (Join-Path $release '.next\standalone') (Join-Path $release 'scripts')

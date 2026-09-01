@@ -19,6 +19,8 @@ Assert-Match $builder 'signtool\.exe' 'Builder must Authenticode-sign the produc
 Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the release signature before compilation'
 Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit portable Node.js runtime'
 Assert-Match $builder 'nodeRuntimeSha256' 'Installer record must identify the bundled runtime by hash'
+Assert-Match $completion 'TrustedNodeRuntimeSha256' 'Installation completion must pin the bundled runtime hash'
+Assert-Match $iss 'TrustedNodeRuntimeSha256' 'Installer completion and repair commands must receive the pinned runtime hash'
 Assert-Match $completion 'release-integrity\.mjs.+verify' 'Installed files must be integrity-verified before provisioning'
 Assert-Match $completion "runtime\\node\.exe" 'Installation completion must use the bundled Node.js runtime'
 Assert-Match $completion 'TrustedPublicKeySha256' 'Installed trust key must be pinned by fingerprint'

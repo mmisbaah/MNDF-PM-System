@@ -13,6 +13,9 @@
 #ifndef NodeRuntimeSource
   #error NodeRuntimeSource must identify the approved portable Node.js runtime
 #endif
+#ifndef TrustedNodeRuntimeSha256
+  #error TrustedNodeRuntimeSha256 is required
+#endif
 
 [Setup]
 AppId={{9A6D70E4-672D-4B1C-8C40-828942719A1A}
@@ -53,13 +56,13 @@ Source: "assets\repair-installation.ps1"; DestDir: "{app}\installer"; Flags: ign
 Source: "assets\remove-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy AllSigned -File ""{app}\installer\complete-installation.ps1"" -InstallRoot ""{app}"" -ReleaseId ""{#ReleaseId}"" -TrustedPublicKeySha256 ""{#TrustedPublicKeySha256}"""; Description: "Complete secure deployment configuration"; Flags: postinstall waituntilterminated skipifsilent
+Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy AllSigned -File ""{app}\installer\complete-installation.ps1"" -InstallRoot ""{app}"" -ReleaseId ""{#ReleaseId}"" -TrustedPublicKeySha256 ""{#TrustedPublicKeySha256}"" -TrustedNodeRuntimeSha256 ""{#TrustedNodeRuntimeSha256}"""; Description: "Complete secure deployment configuration"; Flags: postinstall waituntilterminated skipifsilent
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy AllSigned -File ""{app}\installer\remove-installation.ps1"" -InstallRoot ""{app}"""; Flags: runhidden waituntilterminated; RunOnceId: "PerformanceTrackerRemoveRuntime"
 
 [Icons]
-Name: "{autoprograms}\Performance Tracker\Repair installation"; Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy AllSigned -File ""{app}\installer\repair-installation.ps1"" -InstallRoot ""{app}"""; WorkingDir: "{app}"
+Name: "{autoprograms}\Performance Tracker\Repair installation"; Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy AllSigned -File ""{app}\installer\repair-installation.ps1"" -InstallRoot ""{app}"" -TrustedNodeRuntimeSha256 ""{#TrustedNodeRuntimeSha256}"""; WorkingDir: "{app}"
 
 [Code]
 function InitializeSetup(): Boolean;

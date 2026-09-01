@@ -1,4 +1,4 @@
-param([string]$InstallRoot='C:\PerformanceTracker')
+param([string]$InstallRoot='C:\PerformanceTracker',[Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedNodeRuntimeSha256)
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath($InstallRoot).TrimEnd('\')
 $current=Join-Path $root 'current'
@@ -14,6 +14,8 @@ foreach($required in @('.next\standalone\server.js','.next\standalone\release-ma
 }
 $node=Join-Path $root 'runtime\node.exe'
 if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Bundled Node.js runtime is missing; reinstall from the approved installer'}
+$actualNodeHash=(Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash.ToLowerInvariant()
+if($actualNodeHash-ne$TrustedNodeRuntimeSha256.ToLowerInvariant()){throw 'Bundled Node.js runtime fingerprint is not trusted; reinstall from the approved installer'}
 & $node (Join-Path $release 'scripts\validate-production-env.mjs') --config-file $config
 if($LASTEXITCODE-ne0){throw 'Protected production configuration failed validation'}
 & (Join-Path $release 'scripts\verify-production-acls.ps1') -ReleaseDirectory $release -ConfigDirectory (Join-Path $root 'config') -EvidenceDirectory (Join-Path $root 'evidence') -QuarantineDirectory (Join-Path $root 'quarantine') -LogDirectory (Join-Path $root 'logs')
