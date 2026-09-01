@@ -19,13 +19,14 @@ $passed=$false
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
   Invoke-DeploymentRegression 'PowerShell script syntax' {
-    foreach($file in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1'){
+    $installerRoot=Join-Path (Split-Path $PSScriptRoot -Parent) 'installer'
+    foreach($file in @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1')+@(Get-ChildItem -LiteralPath $installerRoot -Filter '*.ps1' -Recurse)){
       $tokens=$null;$errors=$null
       [Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$tokens,[ref]$errors)|Out-Null
       if($errors.Count){throw "Syntax errors in $($file.Name)"}
     }
   }
-  foreach($name in @('test-release-database-ownership.ps1','test-release-lint-gate.ps1','test-deployment-task-guards.ps1','test-deployment-journal.ps1','test-production-acls.ps1','test-protected-secret-file.ps1','test-serialize-production-env.ps1','test-release-source-check.ps1')){
+  foreach($name in @('test-release-database-ownership.ps1','test-release-lint-gate.ps1','test-deployment-task-guards.ps1','test-deployment-journal.ps1','test-production-acls.ps1','test-protected-secret-file.ps1','test-serialize-production-env.ps1','test-release-source-check.ps1','test-installer-contract.ps1')){
     Invoke-DeploymentRegression $name {
       $global:LASTEXITCODE=0
       & (Join-Path $PSScriptRoot $name)

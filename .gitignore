@@ -17,6 +17,8 @@ backup-keys/
 audit-exports/
 output/
 tmp/
+installer/stage/
+installer/output/
 
 # Local evidence objects and generated exports must not be committed.
 storage/
