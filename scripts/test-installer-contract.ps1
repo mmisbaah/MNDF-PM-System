@@ -17,5 +17,7 @@ Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the re
 Assert-Match $completion 'release-integrity\.mjs.+verify' 'Installed files must be integrity-verified before provisioning'
 Assert-Match $completion 'TrustedPublicKeySha256' 'Installed trust key must be pinned by fingerprint'
 Assert-Match $removal 'deliberately retained' 'Uninstall must state its data-retention behavior'
+Assert-Match $removal 'IndexOf\(\$root' 'Uninstall must verify each scheduled task belongs to this installation root'
+Assert-Match $removal 'Retained \$taskName' 'Uninstall must preserve same-named tasks owned by another installation'
 if($iss-match'(?i)(DATABASE_URL|AUTH_JWT_SECRET|MFA_ENCRYPTION_KEY)\s*='){throw 'Installer source must not embed application secrets'}
 Write-Output 'Installer security contract tests passed.'
