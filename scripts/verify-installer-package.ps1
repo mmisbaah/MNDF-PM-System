@@ -4,6 +4,8 @@ param(
   [string]$ReleasePublicKey,
   [string]$NodeRuntimeDirectory,
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedSigningCertificateThumbprint,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
   [switch]$AllowUnsignedRehearsal
 )
 $ErrorActionPreference='Stop'
@@ -30,7 +32,10 @@ if($AllowUnsignedRehearsal){
 } else {
   if($record.productionAuthorized-ne$true-or$record.authenticodeStatus-ne'Valid'){throw 'Installer provenance does not authorize production use'}
   if(-not$ApprovedSigningCertificateThumbprint){throw 'The independently approved code-signing certificate thumbprint is required'}
+  if($record.compilerSha256-ne$ApprovedCompilerSha256.ToLowerInvariant()){throw 'Installer compiler does not match the independently approved fingerprint'}
+  if(-not$ApprovedSignToolSha256){throw 'The independently approved signtool.exe SHA-256 fingerprint is required'}
   if(([string]$record.signToolSha256)-notmatch'^[0-9a-f]{64}$'-or[string]::IsNullOrWhiteSpace([string]$record.signToolSigner)){throw 'Installer provenance does not identify an approved Windows signing tool'}
+  if($record.signToolSha256-ne$ApprovedSignToolSha256.ToLowerInvariant()){throw 'Windows signing tool does not match the independently approved fingerprint'}
   $signature=Get-AuthenticodeSignature -LiteralPath $installer
   if($signature.Status-ne'Valid'){throw 'Installer executable does not have a valid Authenticode signature'}
   if(-not$signature.SignerCertificate-or-not$signature.TimeStamperCertificate){throw 'Installer signature identity or RFC 3161 timestamp is missing'}
