@@ -4,6 +4,7 @@ param(
   [Parameter(Mandatory=$true)][string]$AppVersion,
   [Parameter(Mandatory=$true)][string]$ReleasePublicKey,
   [Parameter(Mandatory=$true)][string]$NodeRuntimeDirectory,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
   [string]$CompilerPath,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [string]$SignToolPath,
@@ -30,9 +31,10 @@ $nodeExecutable=Join-Path $nodeRuntime 'node.exe'
 $nodeLicense=Join-Path $nodeRuntime 'LICENSE'
 if(-not(Test-Path -LiteralPath $nodeExecutable -PathType Leaf)){throw 'Portable Node.js runtime is missing node.exe'}
 if(-not(Test-Path -LiteralPath $nodeLicense -PathType Leaf)){throw 'Portable Node.js runtime is missing its LICENSE file'}
+$nodeRuntimeSha256=(Get-FileHash -LiteralPath $nodeExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
+if($nodeRuntimeSha256-ne$TrustedNodeRuntimeSha256.ToLowerInvariant()){throw 'Portable Node.js runtime fingerprint does not match the approved release runtime'}
 $runtimeVersion=(& $nodeExecutable --version).Trim()
 if($LASTEXITCODE-ne0-or$runtimeVersion-notmatch'^v24\.'){throw "Installer runtime must be an approved Node.js 24 release; found $runtimeVersion"}
-$nodeRuntimeSha256=(Get-FileHash -LiteralPath $nodeExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
 $publicKeySha256=(Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.ToLowerInvariant()
 & $nodeExecutable (Join-Path $release 'scripts\release-signing.mjs') verify (Join-Path $release '.next\standalone\release-manifest.json') (Join-Path $release '.next\standalone\release-manifest.sig.json') $publicKey
 if($LASTEXITCODE-ne0){throw 'Prepared release signature did not verify against the supplied public key'}

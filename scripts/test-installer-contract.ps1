@@ -53,6 +53,9 @@ Assert-Match $builder 'verify \$buildRecordPath \$buildRecordSignaturePath' 'Bui
 Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the release signature before compilation'
 Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit portable Node.js runtime'
 Assert-Match $builder 'nodeRuntimeSha256' 'Installer record must identify the bundled runtime by hash'
+Assert-Match $builder 'TrustedNodeRuntimeSha256' 'Builder must pin the approved Node.js runtime fingerprint'
+Assert-Match $builder 'runtime fingerprint does not match the approved release runtime' 'Builder must reject an unapproved Node.js binary'
+if($builder.IndexOf('$nodeExecutable --version')-lt$builder.IndexOf('$nodeRuntimeSha256-ne$TrustedNodeRuntimeSha256.ToLowerInvariant')){throw 'Builder must verify the Node.js fingerprint before executing the runtime'}
 Assert-Match $completion 'TrustedNodeRuntimeSha256' 'Installation completion must pin the bundled runtime hash'
 Assert-Match $iss 'TrustedNodeRuntimeSha256' 'Installer completion and repair commands must receive the pinned runtime hash'
 Assert-Match $completion 'release-integrity\.mjs.+verify' 'Installed files must be integrity-verified before provisioning'

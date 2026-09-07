@@ -7,6 +7,7 @@ param(
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleasePublicKeySha256,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
   [switch]$AllowUnsignedRehearsal
 )
 $ErrorActionPreference='Stop'
@@ -57,6 +58,7 @@ if($AllowUnsignedRehearsal){
   $node=Join-Path ([IO.Path]::GetFullPath($NodeRuntimeDirectory)) 'node.exe'
   if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Approved portable Node.js runtime was not found'}
   $runtimeHash=(Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($runtimeHash-ne$ApprovedNodeRuntimeSha256.ToLowerInvariant()){throw 'Verification runtime does not match the independently approved fingerprint'}
   if($runtimeHash-ne$record.nodeRuntimeSha256){throw 'Verification runtime fingerprint does not match installer provenance'}
   & $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify $recordPath $recordSignature $publicKey
   if($LASTEXITCODE-ne0){throw 'Installer provenance signature verification failed'}
