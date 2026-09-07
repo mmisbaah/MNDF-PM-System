@@ -11,7 +11,7 @@ $recordPath=[IO.Path]::GetFullPath($BuildRecordPath)
 if(-not(Test-Path -LiteralPath $installer -PathType Leaf)){throw 'Installer executable was not found'}
 if(-not(Test-Path -LiteralPath $recordPath -PathType Leaf)){throw 'Installer build record was not found'}
 $record=Get-Content -LiteralPath $recordPath -Raw|ConvertFrom-Json
-if($record.format-ne'performance-tracker-installer-build-v4'){throw 'Version 4 installer provenance is required'}
+if($record.format-ne'performance-tracker-installer-build-v5'){throw 'Version 5 installer provenance is required'}
 $artifactDirectory=[IO.Path]::GetDirectoryName($installer)
 if([IO.Path]::GetDirectoryName($recordPath)-ne$artifactDirectory){throw 'Installer and provenance record must be adjacent'}
 foreach($fileName in @($record.installerFile,$record.recordFile)){
@@ -25,11 +25,15 @@ if(([string]$record.releaseCommit)-notmatch'^[0-9a-f]{40}$'){throw 'Installer pr
 $actualInstallerHash=(Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 if($actualInstallerHash-ne$record.sha256){throw 'Installer executable hash does not match its provenance record'}
 if($AllowUnsignedRehearsal){
-  if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile){throw 'Artifact is not a valid unsigned rehearsal bundle'}
+  if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile-or$null-ne$record.installerSignerThumbprint-or$null-ne$record.timestampSignerThumbprint){throw 'Artifact is not a valid unsigned rehearsal bundle'}
 } else {
   if($record.productionAuthorized-ne$true-or$record.authenticodeStatus-ne'Valid'){throw 'Installer provenance does not authorize production use'}
   $signature=Get-AuthenticodeSignature -LiteralPath $installer
   if($signature.Status-ne'Valid'){throw 'Installer executable does not have a valid Authenticode signature'}
+  if(-not$signature.SignerCertificate-or-not$signature.TimeStamperCertificate){throw 'Installer signature identity or RFC 3161 timestamp is missing'}
+  foreach($thumbprint in @($record.installerSignerThumbprint,$record.timestampSignerThumbprint)){if(([string]$thumbprint)-notmatch'^[0-9a-f]{40,64}$'){throw 'Installer provenance contains an invalid signer fingerprint'}}
+  if($signature.SignerCertificate.Thumbprint.ToLowerInvariant()-ne$record.installerSignerThumbprint-or$signature.SignerCertificate.Subject-ne$record.installerSignerSubject){throw 'Installer signer identity does not match provenance'}
+  if($signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()-ne$record.timestampSignerThumbprint){throw 'Installer timestamp authority does not match provenance'}
   if(-not$ReleasePublicKey-or-not(Test-Path -LiteralPath $ReleasePublicKey -PathType Leaf)){throw 'Pinned release public key is required'}
   $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
   if((Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.ToLowerInvariant()-ne$record.releasePublicKeySha256){throw 'Release public key fingerprint does not match installer provenance'}
