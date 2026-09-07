@@ -20,6 +20,18 @@ Assert-Match $builder 'Set-AuthenticodeSignature' 'Builder must sign staged Powe
 Assert-Match $builder 'release-integrity\.mjs.+create' 'Builder must recreate integrity metadata after staged helper signing'
 Assert-Match $builder 'ReleaseSigningPrivateKey' 'Builder must require the offline release key for the staged manifest'
 Assert-Match $builder 'Remove-Item -LiteralPath \$stage -Recurse -Force' 'Builder must remove disposable signing staging data'
+Assert-Match $builder '\$productionScriptNames=@\(' 'Builder must define an explicit production-helper allowlist'
+$allowlistMatch=[regex]::Match($builder,'(?s)\$productionScriptNames=@\((.*?)\)\s*try')
+if(-not$allowlistMatch.Success){throw 'Production-helper allowlist could not be inspected'}
+$allowedNames=@([regex]::Matches($allowlistMatch.Groups[1].Value,"'([^']+)'")|ForEach-Object{$_.Groups[1].Value})
+if(-not$allowedNames.Count-or@($allowedNames|Sort-Object -Unique).Count-ne$allowedNames.Count){throw 'Production-helper allowlist must be non-empty and contain no duplicates'}
+foreach($name in $allowedNames){if(-not(Test-Path -LiteralPath (Join-Path $project "scripts\$name") -PathType Leaf)){throw "Production-helper allowlist names a missing file: $name"}}
+foreach($requiredRuntime in @('start-production.ps1','validate-production-env.mjs','release-integrity.mjs','release-signing.mjs','apply-migrations.ps1','backup-production.ps1','scan-evidence-defender.ps1')){
+  if($requiredRuntime-notin$allowedNames){throw "Required production helper is absent from the allowlist: $requiredRuntime"}
+}
+foreach($forbidden in @('lint-progress.mjs','browser-regression.mjs','provision-baseline-local.mjs','release-gate.ps1','test-installer-contract.ps1')){
+  if($forbidden-in$allowedNames){throw "Development-only helper is present in the production allowlist: $forbidden"}
+}
 Assert-Match $builder 'signtool\.exe' 'Builder must Authenticode-sign the production executable'
 Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the release signature before compilation'
 Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit portable Node.js runtime'

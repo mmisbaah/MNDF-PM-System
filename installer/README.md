@@ -2,7 +2,7 @@
 
 The installer places one immutable, signed release under `C:\PerformanceTracker\releases`. It never embeds or fabricates database passwords, MFA keys, service credentials, TLS private keys, release-signing private keys, or organization records.
 
-The payload is allowlisted to the prepared standalone application, a pinned portable Node.js 24 runtime (including its license), operational scripts, database migrations, and deployment templates. Repository metadata, source-only files, build caches, test output, and development dependencies are excluded.
+The production payload is allowlisted to the prepared standalone application, a pinned portable Node.js 24 runtime (including its license), explicitly named operational scripts, database migrations, and deployment templates. Repository metadata, source-only files, release-gate/build orchestration, build caches, test and lint helpers, local seed tools, browser checks, test output, and development dependencies are excluded. Run the release gate from the controlled release checkout before packaging; do not install the build toolchain on the application host. Unsigned rehearsal packages may retain the wider signed release script inventory for diagnostic parity; they are never production-authorized.
 
 Production compilation uses a disposable staging copy so Authenticode signatures never modify the reviewed checkout or its provenance-bound build output. It signs all staged PowerShell helpers, regenerates the staged full-package manifest, signs that manifest with the offline-custody Ed25519 key, verifies both integrity layers, compiles the installer, signs the EXE, and removes staging even after failure.
 

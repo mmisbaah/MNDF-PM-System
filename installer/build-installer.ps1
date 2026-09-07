@@ -43,6 +43,17 @@ New-Item -ItemType Directory -Path $output -Force|Out-Null
 $packageRelease=$release
 $packageAssets=Join-Path $PSScriptRoot 'assets'
 $stage=$null
+$productionScriptNames=@(
+  'application-log-redaction.ps1','apply-migrations.ps1','backup-crypto.mjs','backup-postgres.ps1','backup-production.ps1',
+  'deployment-journal.ps1','deployment-task-guards.ps1','export-audit-ledger.ps1','initialize-production-secrets.ps1',
+  'install-application-task.ps1','install-audit-export-task.ps1','install-backup-task.ps1','install-evidence-scan-task.ps1',
+  'install-monitor-task.ps1','install-scheduled-jobs-task.ps1','monitor-production.ps1','production-acl-policy.ps1',
+  'promote-release.ps1','protected-secret-file.ps1','release-integrity.mjs',
+  'release-signing.mjs','resolve-node-runtime.ps1','run-scheduled-jobs.ps1','scan-evidence-defender.ps1','serialize-production-env.ps1',
+  'set-production-acls.ps1','start-production.ps1','validate-production-env.mjs',
+  'verify-audit-export.ps1','verify-production-acls.ps1','verify-production-restore.ps1','verify-restore.ps1',
+  'verify-windows-host.ps1'
+)
 try {
   if($AllowUnsignedRehearsal){
     Write-Warning 'Building an unsigned rehearsal installer. It is not authorized for production distribution.'
@@ -56,8 +67,14 @@ try {
     if(-not[Uri]::TryCreate($TimestampUrl,[UriKind]::Absolute,[ref]$timestamp)-or$timestamp.Scheme-ne'https'){throw 'TimestampUrl must be an absolute HTTPS URL'}
     $stage=Join-Path ([IO.Path]::GetTempPath()) ("PerformanceTracker-installer-stage-"+[guid]::NewGuid().ToString('N'))
     $packageRelease=Join-Path $stage 'release';$packageAssets=Join-Path $stage 'assets'
-    New-Item -ItemType Directory -Path $packageRelease,$packageAssets|Out-Null
-    Copy-Item -LiteralPath (Join-Path $release '.next'),(Join-Path $release 'scripts'),(Join-Path $release 'database'),(Join-Path $release 'deploy') -Destination $packageRelease -Recurse
+    New-Item -ItemType Directory -Path $packageRelease,$packageAssets,(Join-Path $packageRelease '.next'),(Join-Path $packageRelease 'scripts')|Out-Null
+    Copy-Item -LiteralPath (Join-Path $release '.next\standalone') -Destination (Join-Path $packageRelease '.next') -Recurse
+    Copy-Item -LiteralPath (Join-Path $release 'database'),(Join-Path $release 'deploy') -Destination $packageRelease -Recurse
+    foreach($scriptName in $productionScriptNames){
+      $scriptPath=Join-Path $release "scripts\$scriptName"
+      if(-not(Test-Path -LiteralPath $scriptPath -PathType Leaf)){throw "Required production helper is missing: $scriptName"}
+      Copy-Item -LiteralPath $scriptPath -Destination (Join-Path $packageRelease 'scripts')
+    }
     Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'assets') -Filter '*.ps1' -File|Copy-Item -Destination $packageAssets
     $stageManifest=Join-Path $packageRelease '.next\standalone\release-manifest.json'
     $stageSignature=Join-Path $packageRelease '.next\standalone\release-manifest.sig.json'
