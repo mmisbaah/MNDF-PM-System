@@ -43,6 +43,7 @@ Assert-Match $builder 'Refusing to replace existing installer evidence' 'Builder
 Assert-Match $builder 'productionHelperAllowlistSha256' 'Installer provenance must bind the production-helper allowlist'
 Assert-Match $builder 'installerSignerThumbprint' 'Installer provenance must bind the Authenticode signer certificate'
 Assert-Match $builder 'timestampSignerThumbprint' 'Installer provenance must bind the RFC 3161 timestamp authority'
+Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'recordSignatureFile' 'Production provenance must name its detached signature without a build-machine path'
 Assert-Match $builder 'sign \$buildRecordPath' 'Builder must sign the production provenance record'
 Assert-Match $builder 'verify \$buildRecordPath \$buildRecordSignaturePath' 'Builder must immediately verify the production provenance signature'

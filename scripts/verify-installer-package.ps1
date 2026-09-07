@@ -3,6 +3,7 @@ param(
   [Parameter(Mandatory=$true)][string]$BuildRecordPath,
   [string]$ReleasePublicKey,
   [string]$NodeRuntimeDirectory,
+  [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedSigningCertificateThumbprint,
   [switch]$AllowUnsignedRehearsal
 )
 $ErrorActionPreference='Stop'
@@ -28,11 +29,13 @@ if($AllowUnsignedRehearsal){
   if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile-or$null-ne$record.installerSignerThumbprint-or$null-ne$record.timestampSignerThumbprint){throw 'Artifact is not a valid unsigned rehearsal bundle'}
 } else {
   if($record.productionAuthorized-ne$true-or$record.authenticodeStatus-ne'Valid'){throw 'Installer provenance does not authorize production use'}
+  if(-not$ApprovedSigningCertificateThumbprint){throw 'The independently approved code-signing certificate thumbprint is required'}
   $signature=Get-AuthenticodeSignature -LiteralPath $installer
   if($signature.Status-ne'Valid'){throw 'Installer executable does not have a valid Authenticode signature'}
   if(-not$signature.SignerCertificate-or-not$signature.TimeStamperCertificate){throw 'Installer signature identity or RFC 3161 timestamp is missing'}
   foreach($thumbprint in @($record.installerSignerThumbprint,$record.timestampSignerThumbprint)){if(([string]$thumbprint)-notmatch'^[0-9a-f]{40,64}$'){throw 'Installer provenance contains an invalid signer fingerprint'}}
   if($signature.SignerCertificate.Thumbprint.ToLowerInvariant()-ne$record.installerSignerThumbprint-or$signature.SignerCertificate.Subject-ne$record.installerSignerSubject){throw 'Installer signer identity does not match provenance'}
+  if($signature.SignerCertificate.Thumbprint-ne$ApprovedSigningCertificateThumbprint){throw 'Installer signer does not match the independently approved certificate thumbprint'}
   if($signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()-ne$record.timestampSignerThumbprint){throw 'Installer timestamp authority does not match provenance'}
   if(-not$ReleasePublicKey-or-not(Test-Path -LiteralPath $ReleasePublicKey -PathType Leaf)){throw 'Pinned release public key is required'}
   $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
