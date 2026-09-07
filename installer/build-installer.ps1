@@ -48,7 +48,8 @@ $output=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force|Out-Null
 $expectedInstaller=Join-Path $output "PerformanceTracker-$AppVersion-x64-setup.exe"
 $buildRecordPath="$expectedInstaller.build.json"
-foreach($reservedOutput in @($expectedInstaller,$buildRecordPath)){
+$buildRecordSignaturePath="$buildRecordPath.sig.json"
+foreach($reservedOutput in @($expectedInstaller,$buildRecordPath,$buildRecordSignaturePath)){
   if(Test-Path -LiteralPath $reservedOutput){throw "Refusing to replace existing installer evidence: $reservedOutput"}
 }
 $packageRelease=$release
@@ -122,8 +123,14 @@ $signature=Get-AuthenticodeSignature -LiteralPath $installer.FullName
 if(-not$AllowUnsignedRehearsal-and$signature.Status-ne'Valid'){throw 'Compiled production installer does not have a valid Authenticode signature'}
 $allowlistBytes=[Text.Encoding]::UTF8.GetBytes(((@($productionScriptNames|Sort-Object)-join"`n")+"`n"))
 $allowlistSha256=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($allowlistBytes)).Replace('-','').ToLowerInvariant()
-$record=[ordered]@{format='performance-tracker-installer-build-v2';recordPath=$buildRecordPath;path=$installer.FullName;sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;authenticodeStatus=[string]$signature.Status;productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
+$record=[ordered]@{format='performance-tracker-installer-build-v3';recordPath=$buildRecordPath;recordSignaturePath=if($AllowUnsignedRehearsal){$null}else{$buildRecordSignaturePath};path=$installer.FullName;sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;authenticodeStatus=[string]$signature.Status;productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
 $recordJson=$record|ConvertTo-Json -Depth 3
 $stream=[IO.File]::Open($buildRecordPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
 try{$writer=[IO.StreamWriter]::new($stream,[Text.UTF8Encoding]::new($false));$writer.Write($recordJson+"`n");$writer.Flush()}finally{if($writer){$writer.Dispose()}else{$stream.Dispose()}}
+if(-not$AllowUnsignedRehearsal){
+  & $nodeExecutable (Join-Path $release 'scripts\release-signing.mjs') sign $buildRecordPath ([IO.Path]::GetFullPath($ReleaseSigningPrivateKey)) $buildRecordSignaturePath
+  if($LASTEXITCODE-ne0){throw 'Installer provenance signing failed'}
+  & $nodeExecutable (Join-Path $release 'scripts\release-signing.mjs') verify $buildRecordPath $buildRecordSignaturePath $publicKey
+  if($LASTEXITCODE-ne0){throw 'Installer provenance signature verification failed'}
+}
 $recordJson
