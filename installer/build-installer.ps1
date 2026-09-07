@@ -46,6 +46,11 @@ $compilerSignature=Get-AuthenticodeSignature -LiteralPath $compiler
 if($compilerSignature.Status-ne'Valid'-or$compilerSignature.SignerCertificate.Subject-notmatch'(^|,\s*)O=Pyrsys B\.V\.(,|$)'){throw 'Inno Setup compiler must have a valid Pyrsys B.V. Authenticode signature'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force|Out-Null
+$expectedInstaller=Join-Path $output "PerformanceTracker-$AppVersion-x64-setup.exe"
+$buildRecordPath="$expectedInstaller.build.json"
+foreach($reservedOutput in @($expectedInstaller,$buildRecordPath)){
+  if(Test-Path -LiteralPath $reservedOutput){throw "Refusing to replace existing installer evidence: $reservedOutput"}
+}
 $packageRelease=$release
 $packageAssets=Join-Path $PSScriptRoot 'assets'
 $stage=$null
@@ -105,8 +110,8 @@ try {
 } finally {
   if($stage-and(Test-Path -LiteralPath $stage)){Remove-Item -LiteralPath $stage -Recurse -Force}
 }
-$installer=Get-ChildItem -LiteralPath $output -Filter "PerformanceTracker-$AppVersion-x64-setup.exe" -File|Select-Object -First 1
-if(-not$installer){throw 'Installer compiler completed without the expected executable'}
+$installer=Get-Item -LiteralPath $expectedInstaller -ErrorAction SilentlyContinue
+if(-not$installer-or$installer.PSIsContainer){throw 'Installer compiler completed without the expected executable'}
 if(-not$AllowUnsignedRehearsal){
   if(-not$SignToolPath){$signCommand=Get-Command signtool.exe -ErrorAction SilentlyContinue;if($signCommand){$SignToolPath=$signCommand.Source}}
   if(-not$SignToolPath-or-not(Test-Path -LiteralPath $SignToolPath -PathType Leaf)){throw 'Windows SDK signtool.exe is required for the production installer'}
@@ -115,4 +120,10 @@ if(-not$AllowUnsignedRehearsal){
 }
 $signature=Get-AuthenticodeSignature -LiteralPath $installer.FullName
 if(-not$AllowUnsignedRehearsal-and$signature.Status-ne'Valid'){throw 'Compiled production installer does not have a valid Authenticode signature'}
-[ordered]@{format='performance-tracker-installer-build-v1';path=$installer.FullName;sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;authenticodeStatus=[string]$signature.Status;productionAuthorized=(-not$AllowUnsignedRehearsal)}|ConvertTo-Json -Depth 3
+$allowlistBytes=[Text.Encoding]::UTF8.GetBytes(((@($productionScriptNames|Sort-Object)-join"`n")+"`n"))
+$allowlistSha256=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($allowlistBytes)).Replace('-','').ToLowerInvariant()
+$record=[ordered]@{format='performance-tracker-installer-build-v2';recordPath=$buildRecordPath;path=$installer.FullName;sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;authenticodeStatus=[string]$signature.Status;productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
+$recordJson=$record|ConvertTo-Json -Depth 3
+$stream=[IO.File]::Open($buildRecordPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+try{$writer=[IO.StreamWriter]::new($stream,[Text.UTF8Encoding]::new($false));$writer.Write($recordJson+"`n");$writer.Flush()}finally{if($writer){$writer.Dispose()}else{$stream.Dispose()}}
+$recordJson

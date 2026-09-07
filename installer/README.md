@@ -20,4 +20,6 @@ Production compilation requires:
 
 The default `TrustedCompilerSha256` pins the reviewed Inno Setup 6.7.3 compiler. A compiler upgrade requires a separately reviewed source change to that fingerprint; do not override it merely to make an unfamiliar binary pass. The installer build record includes the verified compiler hash and publisher subject.
 
+Every successful build creates `<installer>.build.json` using exclusive creation. The builder refuses to replace either an existing installer or its record. Preserve the pair together: the version 2 record binds the installer hash to the source commit, release identifier, compiler identity, bundled Node runtime, release trust key, production-helper allowlist, signing status, and UTC creation time. Console output is informational and is not a substitute for retaining this file.
+
 Uninstall removes runtime scheduled tasks but deliberately retains configuration, evidence, logs, backups, audit exports, and immutable releases. Those records require a separate authorized retention or destruction decision.
