@@ -23,6 +23,11 @@ if($AppVersion-notmatch'^\d+\.\d+\.\d+([.-][A-Za-z0-9.-]+)?$'){throw 'AppVersion
 foreach($required in @('.next\standalone\server.js','.next\standalone\release-manifest.json','.next\standalone\release-manifest.sig.json','scripts\start-production.ps1')){
   if(-not(Test-Path -LiteralPath (Join-Path $release $required) -PathType Leaf)){throw "Prepared release is missing $required"}
 }
+$standalonePackagePath=Join-Path $release '.next\standalone\package.json'
+if(-not(Test-Path -LiteralPath $standalonePackagePath -PathType Leaf)){throw 'Prepared release is missing signed standalone package metadata'}
+$standalonePackage=Get-Content -LiteralPath $standalonePackagePath -Raw|ConvertFrom-Json
+if($standalonePackage.name-ne'performance-tracker'){throw 'Prepared release package identity is not Performance Tracker'}
+if($standalonePackage.version-ne$AppVersion){throw "Installer version $AppVersion does not match signed release version $($standalonePackage.version)"}
 $manifest=Get-Content -LiteralPath (Join-Path $release '.next\standalone\release-manifest.json') -Raw|ConvertFrom-Json
 if($manifest.commit-notmatch'^[0-9a-f]{40}$'){throw 'Release manifest has no valid source commit'}
 $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)

@@ -56,6 +56,9 @@ Assert-Match $builder 'recordSignatureFile' 'Production provenance must name its
 Assert-Match $builder 'sign \$buildRecordPath' 'Builder must sign the production provenance record'
 Assert-Match $builder 'verify \$buildRecordPath \$buildRecordSignaturePath' 'Builder must immediately verify the production provenance signature'
 Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the release signature before compilation'
+Assert-Match $builder "standalonePackage.name-ne'performance-tracker'" 'Builder must require the source-controlled application identity'
+Assert-Match $builder 'standalonePackage.version-ne\$AppVersion' 'Builder must reject an installer version that differs from the signed release'
+if($builder.IndexOf('$standalonePackage.version-ne$AppVersion')-gt$builder.IndexOf('& $CompilerPath @defines')){throw 'Builder must verify the signed release version before compiling the installer'}
 Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit portable Node.js runtime'
 Assert-Match $builder 'nodeRuntimeSha256' 'Installer record must identify the bundled runtime by hash'
 Assert-Match $builder 'TrustedNodeRuntimeSha256' 'Builder must pin the approved Node.js runtime fingerprint'

@@ -9,6 +9,7 @@ Production compilation uses a disposable staging copy so Authenticode signatures
 Production compilation requires:
 
 - a clean, provenance-recorded standalone release with an Ed25519 release-manifest signature;
+- an installer version exactly matching the source-controlled `performance-tracker` version in the signed standalone package metadata;
 - access to the organization-controlled Authenticode certificate private key and the separately guarded Ed25519 release-signing key/passphrase;
 - the pinned Inno Setup 6.7.3 compiler whose SHA-256 fingerprint and valid Pyrsys B.V. Authenticode publisher signature are verified before use;
 - the separately verified release public key and its recorded fingerprint;
@@ -18,6 +19,8 @@ Production compilation requires:
 - an attended deployment administrator to provision restricted PostgreSQL roles, TLS, protected secrets, ACLs, and the dedicated non-administrator service account.
 
 `build-installer.ps1 -AllowUnsignedRehearsal` exists only for disposable installation testing. Its output is not authorized for production distribution.
+
+Change the application version only through a reviewed source commit. The builder rejects a free-form `-AppVersion` value that does not exactly match the package metadata covered by the release integrity manifest.
 
 The default `TrustedCompilerSha256` pins the reviewed Inno Setup 6.7.3 compiler. A compiler upgrade requires a separately reviewed source change to that fingerprint; do not override it merely to make an unfamiliar binary pass. The installer build record includes the verified compiler hash and publisher subject.
 
