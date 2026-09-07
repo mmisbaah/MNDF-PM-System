@@ -6,6 +6,7 @@ param(
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedSigningCertificateThumbprint,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleasePublicKeySha256,
   [switch]$AllowUnsignedRehearsal
 )
 $ErrorActionPreference='Stop'
@@ -34,6 +35,7 @@ if($AllowUnsignedRehearsal){
   if(-not$ApprovedSigningCertificateThumbprint){throw 'The independently approved code-signing certificate thumbprint is required'}
   if($record.compilerSha256-ne$ApprovedCompilerSha256.ToLowerInvariant()){throw 'Installer compiler does not match the independently approved fingerprint'}
   if(-not$ApprovedSignToolSha256){throw 'The independently approved signtool.exe SHA-256 fingerprint is required'}
+  if(-not$ApprovedReleasePublicKeySha256){throw 'The independently approved release public-key SHA-256 fingerprint is required'}
   if(([string]$record.signToolSha256)-notmatch'^[0-9a-f]{64}$'-or[string]::IsNullOrWhiteSpace([string]$record.signToolSigner)){throw 'Installer provenance does not identify an approved Windows signing tool'}
   if($record.signToolSha256-ne$ApprovedSignToolSha256.ToLowerInvariant()){throw 'Windows signing tool does not match the independently approved fingerprint'}
   $signature=Get-AuthenticodeSignature -LiteralPath $installer
@@ -45,7 +47,9 @@ if($AllowUnsignedRehearsal){
   if($signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()-ne$record.timestampSignerThumbprint){throw 'Installer timestamp authority does not match provenance'}
   if(-not$ReleasePublicKey-or-not(Test-Path -LiteralPath $ReleasePublicKey -PathType Leaf)){throw 'Pinned release public key is required'}
   $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
-  if((Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.ToLowerInvariant()-ne$record.releasePublicKeySha256){throw 'Release public key fingerprint does not match installer provenance'}
+  $actualPublicKeySha256=(Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($actualPublicKeySha256-ne$ApprovedReleasePublicKeySha256.ToLowerInvariant()){throw 'Release public key does not match the independently approved fingerprint'}
+  if($actualPublicKeySha256-ne$record.releasePublicKeySha256){throw 'Release public key fingerprint does not match installer provenance'}
   if([IO.Path]::GetFileName([string]$record.recordSignatureFile)-ne$record.recordSignatureFile){throw 'Installer provenance contains an unsafe signature filename'}
   $recordSignature=Join-Path $artifactDirectory ([string]$record.recordSignatureFile)
   if($recordSignature-ne"$recordPath.sig.json"-or-not(Test-Path -LiteralPath $recordSignature -PathType Leaf)){throw 'Installer provenance signature is missing or misplaced'}

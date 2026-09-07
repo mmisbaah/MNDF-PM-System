@@ -14,6 +14,10 @@ try{
   if(-not$failed){throw 'Production verification accepted a missing approved signer thumbprint'}
   $failed=$false;try{& (Join-Path $PSScriptRoot 'verify-installer-package.ps1') -InstallerPath $installer -BuildRecordPath $recordPath -ApprovedSigningCertificateThumbprint ('f'*40) -ApprovedCompilerSha256 ('b'*64)}catch{$failed=$_.Exception.Message-match'approved signtool\.exe'}
   if(-not$failed){throw 'Production verification accepted a missing approved signing-tool fingerprint'}
+  $record.signToolSha256=('1'*64);$record.signToolSigner='Microsoft';$record|ConvertTo-Json|Set-Content -LiteralPath $recordPath -Encoding utf8
+  $failed=$false;try{& (Join-Path $PSScriptRoot 'verify-installer-package.ps1') -InstallerPath $installer -BuildRecordPath $recordPath -ApprovedSigningCertificateThumbprint ('f'*40) -ApprovedCompilerSha256 ('b'*64) -ApprovedSignToolSha256 ('1'*64)}catch{$failed=$_.Exception.Message-match'approved release public-key'}
+  if(-not$failed){throw 'Production verification accepted a missing approved release-key fingerprint'}
+  $record.signToolSha256=$null;$record.signToolSigner=$null;$record|ConvertTo-Json|Set-Content -LiteralPath $recordPath -Encoding utf8
   $record.productionAuthorized=$false;$record.authenticodeStatus='NotSigned';$record|ConvertTo-Json|Set-Content -LiteralPath $recordPath -Encoding utf8
   [IO.File]::AppendAllText($installer,'tamper')
   $failed=$false
