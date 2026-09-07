@@ -4,6 +4,7 @@ param(
   [string]$ReleasePublicKey,
   [string]$NodeRuntimeDirectory,
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedSigningCertificateThumbprint,
+  [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedTimestampCertificateThumbprint,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleasePublicKeySha256,
@@ -16,7 +17,7 @@ $recordPath=[IO.Path]::GetFullPath($BuildRecordPath)
 if(-not(Test-Path -LiteralPath $installer -PathType Leaf)){throw 'Installer executable was not found'}
 if(-not(Test-Path -LiteralPath $recordPath -PathType Leaf)){throw 'Installer build record was not found'}
 $record=Get-Content -LiteralPath $recordPath -Raw|ConvertFrom-Json
-if($record.format-ne'performance-tracker-installer-build-v7'){throw 'Version 7 installer provenance is required'}
+if($record.format-ne'performance-tracker-installer-build-v8'){throw 'Version 8 installer provenance is required'}
 $artifactDirectory=[IO.Path]::GetDirectoryName($installer)
 if([IO.Path]::GetDirectoryName($recordPath)-ne$artifactDirectory){throw 'Installer and provenance record must be adjacent'}
 foreach($fileName in @($record.installerFile,$record.recordFile)){
@@ -34,6 +35,7 @@ if($AllowUnsignedRehearsal){
 } else {
   if($record.productionAuthorized-ne$true-or$record.authenticodeStatus-ne'Valid'){throw 'Installer provenance does not authorize production use'}
   if(-not$ApprovedSigningCertificateThumbprint){throw 'The independently approved code-signing certificate thumbprint is required'}
+  if(-not$ApprovedTimestampCertificateThumbprint){throw 'The independently approved RFC 3161 timestamp certificate thumbprint is required'}
   if($record.compilerSha256-ne$ApprovedCompilerSha256.ToLowerInvariant()){throw 'Installer compiler does not match the independently approved fingerprint'}
   if(-not$ApprovedSignToolSha256){throw 'The independently approved signtool.exe SHA-256 fingerprint is required'}
   if(-not$ApprovedReleasePublicKeySha256){throw 'The independently approved release public-key SHA-256 fingerprint is required'}
@@ -46,6 +48,7 @@ if($AllowUnsignedRehearsal){
   if($signature.SignerCertificate.Thumbprint.ToLowerInvariant()-ne$record.installerSignerThumbprint-or$signature.SignerCertificate.Subject-ne$record.installerSignerSubject){throw 'Installer signer identity does not match provenance'}
   if($signature.SignerCertificate.Thumbprint-ne$ApprovedSigningCertificateThumbprint){throw 'Installer signer does not match the independently approved certificate thumbprint'}
   if($signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()-ne$record.timestampSignerThumbprint){throw 'Installer timestamp authority does not match provenance'}
+  if($signature.TimeStamperCertificate.Thumbprint-ne$ApprovedTimestampCertificateThumbprint){throw 'Installer timestamp authority does not match the independently approved certificate'}
   if(-not$ReleasePublicKey-or-not(Test-Path -LiteralPath $ReleasePublicKey -PathType Leaf)){throw 'Pinned release public key is required'}
   $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
   $actualPublicKeySha256=(Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.ToLowerInvariant()
