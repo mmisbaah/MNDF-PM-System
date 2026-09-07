@@ -10,12 +10,14 @@ Production compilation requires:
 
 - a clean, provenance-recorded standalone release with an Ed25519 release-manifest signature;
 - access to the organization-controlled Authenticode certificate private key and the separately guarded Ed25519 release-signing key/passphrase;
-- an approved Inno Setup compiler;
+- the pinned Inno Setup 6.7.3 compiler whose SHA-256 fingerprint and valid Pyrsys B.V. Authenticode publisher signature are verified before use;
 - the separately verified release public key and its recorded fingerprint;
 - a Windows SDK signing tool and organization-controlled Authenticode code-signing certificate;
 - an Authenticode-signed and RFC 3161 timestamped final installer executable;
 - an attended deployment administrator to provision restricted PostgreSQL roles, TLS, protected secrets, ACLs, and the dedicated non-administrator service account.
 
 `build-installer.ps1 -AllowUnsignedRehearsal` exists only for disposable installation testing. Its output is not authorized for production distribution.
+
+The default `TrustedCompilerSha256` pins the reviewed Inno Setup 6.7.3 compiler. A compiler upgrade requires a separately reviewed source change to that fingerprint; do not override it merely to make an unfamiliar binary pass. The installer build record includes the verified compiler hash and publisher subject.
 
 Uninstall removes runtime scheduled tasks but deliberately retains configuration, evidence, logs, backups, audit exports, and immutable releases. Those records require a separate authorized retention or destruction decision.

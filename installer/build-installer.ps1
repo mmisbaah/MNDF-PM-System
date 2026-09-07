@@ -5,6 +5,7 @@ param(
   [Parameter(Mandatory=$true)][string]$ReleasePublicKey,
   [Parameter(Mandatory=$true)][string]$NodeRuntimeDirectory,
   [string]$CompilerPath,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [string]$SignToolPath,
   [string]$SigningCertificateThumbprint,
   [string]$ReleaseSigningPrivateKey,
@@ -38,6 +39,11 @@ if($LASTEXITCODE-ne0){throw 'Prepared release signature did not verify against t
 if($LASTEXITCODE-ne0){throw 'Prepared release package integrity verification failed'}
 if(-not$CompilerPath){$command=Get-Command ISCC.exe -ErrorAction SilentlyContinue;if($command){$CompilerPath=$command.Source}}
 if(-not$CompilerPath-or-not(Test-Path -LiteralPath $CompilerPath -PathType Leaf)){throw 'Inno Setup compiler ISCC.exe was not found. Install the approved compiler or pass -CompilerPath.'}
+$compiler=[IO.Path]::GetFullPath($CompilerPath)
+$compilerSha256=(Get-FileHash -LiteralPath $compiler -Algorithm SHA256).Hash.ToLowerInvariant()
+if($compilerSha256-ne$TrustedCompilerSha256.ToLowerInvariant()){throw 'Inno Setup compiler fingerprint does not match the approved release-tool version'}
+$compilerSignature=Get-AuthenticodeSignature -LiteralPath $compiler
+if($compilerSignature.Status-ne'Valid'-or$compilerSignature.SignerCertificate.Subject-notmatch'(^|,\s*)O=Pyrsys B\.V\.(,|$)'){throw 'Inno Setup compiler must have a valid Pyrsys B.V. Authenticode signature'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force|Out-Null
 $packageRelease=$release
@@ -109,4 +115,4 @@ if(-not$AllowUnsignedRehearsal){
 }
 $signature=Get-AuthenticodeSignature -LiteralPath $installer.FullName
 if(-not$AllowUnsignedRehearsal-and$signature.Status-ne'Valid'){throw 'Compiled production installer does not have a valid Authenticode signature'}
-[ordered]@{format='performance-tracker-installer-build-v1';path=$installer.FullName;sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;authenticodeStatus=[string]$signature.Status;productionAuthorized=(-not$AllowUnsignedRehearsal)}|ConvertTo-Json -Depth 3
+[ordered]@{format='performance-tracker-installer-build-v1';path=$installer.FullName;sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;authenticodeStatus=[string]$signature.Status;productionAuthorized=(-not$AllowUnsignedRehearsal)}|ConvertTo-Json -Depth 3

@@ -33,6 +33,10 @@ foreach($forbidden in @('lint-progress.mjs','browser-regression.mjs','provision-
   if($forbidden-in$allowedNames){throw "Development-only helper is present in the production allowlist: $forbidden"}
 }
 Assert-Match $builder 'signtool\.exe' 'Builder must Authenticode-sign the production executable'
+Assert-Match $builder 'TrustedCompilerSha256' 'Builder must pin the approved installer compiler fingerprint'
+Assert-Match $builder "compilerSignature\.Status-ne'Valid'" 'Builder must require a valid compiler Authenticode signature'
+Assert-Match $builder 'O=Pyrsys B' 'Builder must restrict the compiler to the approved publisher'
+Assert-Match $builder 'compilerSha256=\$compilerSha256' 'Installer build record must identify the compiler fingerprint'
 Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the release signature before compilation'
 Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit portable Node.js runtime'
 Assert-Match $builder 'nodeRuntimeSha256' 'Installer record must identify the bundled runtime by hash'
