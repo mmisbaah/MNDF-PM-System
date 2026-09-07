@@ -16,7 +16,7 @@ $recordPath=[IO.Path]::GetFullPath($BuildRecordPath)
 if(-not(Test-Path -LiteralPath $installer -PathType Leaf)){throw 'Installer executable was not found'}
 if(-not(Test-Path -LiteralPath $recordPath -PathType Leaf)){throw 'Installer build record was not found'}
 $record=Get-Content -LiteralPath $recordPath -Raw|ConvertFrom-Json
-if($record.format-ne'performance-tracker-installer-build-v6'){throw 'Version 6 installer provenance is required'}
+if($record.format-ne'performance-tracker-installer-build-v7'){throw 'Version 7 installer provenance is required'}
 $artifactDirectory=[IO.Path]::GetDirectoryName($installer)
 if([IO.Path]::GetDirectoryName($recordPath)-ne$artifactDirectory){throw 'Installer and provenance record must be adjacent'}
 foreach($fileName in @($record.installerFile,$record.recordFile)){
@@ -60,6 +60,9 @@ if($AllowUnsignedRehearsal){
   $runtimeHash=(Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash.ToLowerInvariant()
   if($runtimeHash-ne$ApprovedNodeRuntimeSha256.ToLowerInvariant()){throw 'Verification runtime does not match the independently approved fingerprint'}
   if($runtimeHash-ne$record.nodeRuntimeSha256){throw 'Verification runtime fingerprint does not match installer provenance'}
+  $runtimeSignature=Get-AuthenticodeSignature -LiteralPath $node
+  if($runtimeSignature.Status-ne'Valid'-or$runtimeSignature.SignerCertificate.Subject-notmatch'(^|,\s*)O=OpenJS Foundation(,|$)'){throw 'Verification runtime does not have a valid OpenJS Foundation Authenticode signature'}
+  if([string]::IsNullOrWhiteSpace([string]$record.nodeRuntimeSigner)-or$runtimeSignature.SignerCertificate.Subject-ne$record.nodeRuntimeSigner){throw 'Verification runtime publisher does not match installer provenance'}
   & $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify $recordPath $recordSignature $publicKey
   if($LASTEXITCODE-ne0){throw 'Installer provenance signature verification failed'}
 }

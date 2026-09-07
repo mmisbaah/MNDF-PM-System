@@ -2,6 +2,7 @@ $ErrorActionPreference='Stop'
 $project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $iss=Get-Content -LiteralPath (Join-Path $project 'installer\PerformanceTracker.iss') -Raw
 $builder=Get-Content -LiteralPath (Join-Path $project 'installer\build-installer.ps1') -Raw
+$verifier=Get-Content -LiteralPath (Join-Path $project 'scripts\verify-installer-package.ps1') -Raw
 $completion=Get-Content -LiteralPath (Join-Path $project 'installer\assets\complete-installation.ps1') -Raw
 $removal=Get-Content -LiteralPath (Join-Path $project 'installer\assets\remove-installation.ps1') -Raw
 function Assert-Match([string]$Value,[string]$Pattern,[string]$Message){if($Value-notmatch$Pattern){throw $Message}}
@@ -37,7 +38,7 @@ Assert-Match $builder 'TrustedCompilerSha256' 'Builder must pin the approved ins
 Assert-Match $builder "compilerSignature\.Status-ne'Valid'" 'Builder must require a valid compiler Authenticode signature'
 Assert-Match $builder 'O=Pyrsys B' 'Builder must restrict the compiler to the approved publisher'
 Assert-Match $builder 'compilerSha256=\$compilerSha256' 'Installer build record must identify the compiler fingerprint'
-Assert-Match $builder 'performance-tracker-installer-build-v6' 'Builder must bind all production signing-tool identities into portable provenance'
+Assert-Match $builder 'performance-tracker-installer-build-v7' 'Builder must bind all production signing-tool identities into portable provenance'
 Assert-Match $builder 'FileMode\]::CreateNew' 'Installer provenance must never replace an existing record'
 Assert-Match $builder 'Refusing to replace existing installer evidence' 'Builder must preserve existing installer outputs'
 Assert-Match $builder 'productionHelperAllowlistSha256' 'Installer provenance must bind the production-helper allowlist'
@@ -55,7 +56,12 @@ Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit p
 Assert-Match $builder 'nodeRuntimeSha256' 'Installer record must identify the bundled runtime by hash'
 Assert-Match $builder 'TrustedNodeRuntimeSha256' 'Builder must pin the approved Node.js runtime fingerprint'
 Assert-Match $builder 'runtime fingerprint does not match the approved release runtime' 'Builder must reject an unapproved Node.js binary'
+Assert-Match $builder 'O=OpenJS Foundation' 'Builder must require the approved Node.js Authenticode publisher'
+Assert-Match $builder 'nodeRuntimeSigner' 'Installer record must identify the Node.js Authenticode publisher'
+Assert-Match $verifier "runtimeSignature\.Status-ne'Valid'" 'Package verifier must require a valid Node.js Authenticode signature'
+Assert-Match $verifier 'runtimeSignature.SignerCertificate.Subject-ne\$record.nodeRuntimeSigner' 'Package verifier must bind the Node.js publisher to provenance'
 if($builder.IndexOf('$nodeExecutable --version')-lt$builder.IndexOf('$nodeRuntimeSha256-ne$TrustedNodeRuntimeSha256.ToLowerInvariant')){throw 'Builder must verify the Node.js fingerprint before executing the runtime'}
+if($builder.IndexOf('$nodeExecutable --version')-lt$builder.IndexOf('$nodeRuntimeSignature.Status-ne''Valid''')){throw 'Builder must verify the Node.js publisher before executing the runtime'}
 Assert-Match $completion 'TrustedNodeRuntimeSha256' 'Installation completion must pin the bundled runtime hash'
 Assert-Match $iss 'TrustedNodeRuntimeSha256' 'Installer completion and repair commands must receive the pinned runtime hash'
 Assert-Match $completion 'release-integrity\.mjs.+verify' 'Installed files must be integrity-verified before provisioning'
