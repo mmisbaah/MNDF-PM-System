@@ -14,7 +14,12 @@ Assert-Match $iss '\{#NodeRuntimeSource\}\\LICENSE' 'Installer must package the 
 if($iss-match'(?m)^Source: "\{#NodeRuntimeSource\}\\(?:node\.exe|LICENSE)";[^\r\n]*uninsneveruninstall'){throw 'Replaceable Node.js runtime files must be removed during uninstall'}
 if($iss-match'Source:\s*"\{#ReleaseSource\}\\\*"'){throw 'Installer must not package the repository root, source tree, caches, or development dependencies'}
 Assert-Match $iss 'ExecutionPolicy AllSigned' 'Installer helpers must run under AllSigned policy'
-Assert-Match $builder 'Get-AuthenticodeSignature' 'Builder must reject unsigned production helpers'
+Assert-Match $builder 'Get-AuthenticodeSignature' 'Builder must verify the compiled production installer signature'
+Assert-Match $builder 'PerformanceTracker-installer-stage-' 'Production helper signing must use a disposable staging directory'
+Assert-Match $builder 'Set-AuthenticodeSignature' 'Builder must sign staged PowerShell helpers'
+Assert-Match $builder 'release-integrity\.mjs.+create' 'Builder must recreate integrity metadata after staged helper signing'
+Assert-Match $builder 'ReleaseSigningPrivateKey' 'Builder must require the offline release key for the staged manifest'
+Assert-Match $builder 'Remove-Item -LiteralPath \$stage -Recurse -Force' 'Builder must remove disposable signing staging data'
 Assert-Match $builder 'signtool\.exe' 'Builder must Authenticode-sign the production executable'
 Assert-Match $builder 'release-signing\.mjs.+verify' 'Builder must verify the release signature before compilation'
 Assert-Match $builder 'NodeRuntimeDirectory' 'Builder must require an explicit portable Node.js runtime'

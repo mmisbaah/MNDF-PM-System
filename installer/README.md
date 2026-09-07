@@ -4,10 +4,12 @@ The installer places one immutable, signed release under `C:\PerformanceTracker\
 
 The payload is allowlisted to the prepared standalone application, a pinned portable Node.js 24 runtime (including its license), operational scripts, database migrations, and deployment templates. Repository metadata, source-only files, build caches, test output, and development dependencies are excluded.
 
+Production compilation uses a disposable staging copy so Authenticode signatures never modify the reviewed checkout or its provenance-bound build output. It signs all staged PowerShell helpers, regenerates the staged full-package manifest, signs that manifest with the offline-custody Ed25519 key, verifies both integrity layers, compiles the installer, signs the EXE, and removes staging even after failure.
+
 Production compilation requires:
 
 - a clean, provenance-recorded standalone release with an Ed25519 release-manifest signature;
-- valid Authenticode signatures on every packaged PowerShell helper;
+- access to the organization-controlled Authenticode certificate private key and the separately guarded Ed25519 release-signing key/passphrase;
 - an approved Inno Setup compiler;
 - the separately verified release public key and its recorded fingerprint;
 - a Windows SDK signing tool and organization-controlled Authenticode code-signing certificate;

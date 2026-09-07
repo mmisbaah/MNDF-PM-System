@@ -7,6 +7,7 @@ param(
   [string]$CompilerPath,
   [string]$SignToolPath,
   [string]$SigningCertificateThumbprint,
+  [string]$ReleaseSigningPrivateKey,
   [string]$TimestampUrl='https://timestamp.digicert.com',
   [string]$OutputDirectory=(Join-Path $PSScriptRoot 'output'),
   [switch]$AllowUnsignedRehearsal
@@ -35,26 +36,57 @@ $publicKeySha256=(Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.T
 if($LASTEXITCODE-ne0){throw 'Prepared release signature did not verify against the supplied public key'}
 & $nodeExecutable (Join-Path $release 'scripts\release-integrity.mjs') verify (Join-Path $release '.next\standalone') (Join-Path $release 'scripts')
 if($LASTEXITCODE-ne0){throw 'Prepared release package integrity verification failed'}
-$helpers=@(Get-ChildItem -LiteralPath (Join-Path $release 'scripts') -Filter '*.ps1' -File)
-$installerHelpers=@(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'assets') -Filter '*.ps1' -File)
-$unsigned=@($helpers+$installerHelpers|Where-Object{(Get-AuthenticodeSignature -LiteralPath $_.FullName).Status-ne'Valid'})
-if($unsigned.Count-and-not$AllowUnsignedRehearsal){throw "Production installer requires valid Authenticode signatures on every PowerShell helper. Unsigned or invalid: $($unsigned.Name -join ', ')"}
 if(-not$CompilerPath){$command=Get-Command ISCC.exe -ErrorAction SilentlyContinue;if($command){$CompilerPath=$command.Source}}
 if(-not$CompilerPath-or-not(Test-Path -LiteralPath $CompilerPath -PathType Leaf)){throw 'Inno Setup compiler ISCC.exe was not found. Install the approved compiler or pass -CompilerPath.'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force|Out-Null
-$defines=@("/DReleaseSource=$release","/DReleaseId=$ReleaseId","/DAppVersion=$AppVersion","/DReleasePublicKey=$publicKey","/DNodeRuntimeSource=$nodeRuntime","/DTrustedPublicKeySha256=$publicKeySha256","/DTrustedNodeRuntimeSha256=$nodeRuntimeSha256","/O$output")
-if($AllowUnsignedRehearsal){Write-Warning 'Building an unsigned rehearsal installer. It is not authorized for production distribution.'}
-& $CompilerPath @defines (Join-Path $PSScriptRoot 'PerformanceTracker.iss')
-if($LASTEXITCODE-ne0){throw "Installer compilation failed with exit code $LASTEXITCODE"}
+$packageRelease=$release
+$packageAssets=Join-Path $PSScriptRoot 'assets'
+$stage=$null
+try {
+  if($AllowUnsignedRehearsal){
+    Write-Warning 'Building an unsigned rehearsal installer. It is not authorized for production distribution.'
+  } else {
+    if($SigningCertificateThumbprint-notmatch'^[0-9a-fA-F]{40,64}$'){throw 'A production Authenticode certificate thumbprint is required'}
+    $certificate=Get-ChildItem -Path Cert:\CurrentUser\My,Cert:\LocalMachine\My -ErrorAction SilentlyContinue|Where-Object{$_.Thumbprint-eq$SigningCertificateThumbprint-and$_.HasPrivateKey}|Select-Object -First 1
+    if(-not$certificate){throw 'The Authenticode certificate and private key were not found in an approved certificate store'}
+    if(-not$ReleaseSigningPrivateKey-or-not(Test-Path -LiteralPath $ReleaseSigningPrivateKey -PathType Leaf)){throw 'The offline-custody Ed25519 release-signing private key is required for production staging'}
+    if([string]::IsNullOrEmpty($env:RELEASE_SIGNING_KEY_PASSPHRASE)-or$env:RELEASE_SIGNING_KEY_PASSPHRASE.Length-lt20){throw 'RELEASE_SIGNING_KEY_PASSPHRASE is required for production staging'}
+    $timestamp=$null
+    if(-not[Uri]::TryCreate($TimestampUrl,[UriKind]::Absolute,[ref]$timestamp)-or$timestamp.Scheme-ne'https'){throw 'TimestampUrl must be an absolute HTTPS URL'}
+    $stage=Join-Path ([IO.Path]::GetTempPath()) ("PerformanceTracker-installer-stage-"+[guid]::NewGuid().ToString('N'))
+    $packageRelease=Join-Path $stage 'release';$packageAssets=Join-Path $stage 'assets'
+    New-Item -ItemType Directory -Path $packageRelease,$packageAssets|Out-Null
+    Copy-Item -LiteralPath (Join-Path $release '.next'),(Join-Path $release 'scripts'),(Join-Path $release 'database'),(Join-Path $release 'deploy') -Destination $packageRelease -Recurse
+    Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'assets') -Filter '*.ps1' -File|Copy-Item -Destination $packageAssets
+    $stageManifest=Join-Path $packageRelease '.next\standalone\release-manifest.json'
+    $stageSignature=Join-Path $packageRelease '.next\standalone\release-manifest.sig.json'
+    Remove-Item -LiteralPath $stageManifest,$stageSignature -Force
+    $stageHelpers=@(Get-ChildItem -LiteralPath (Join-Path $packageRelease 'scripts') -Filter '*.ps1' -File)+@(Get-ChildItem -LiteralPath $packageAssets -Filter '*.ps1' -File)
+    foreach($helper in $stageHelpers){
+      $signed=Set-AuthenticodeSignature -LiteralPath $helper.FullName -Certificate $certificate -HashAlgorithm SHA256 -TimestampServer $TimestampUrl
+      if($signed.Status-ne'Valid'){throw "Authenticode signing failed for staged helper $($helper.Name): $($signed.StatusMessage)"}
+    }
+    & $nodeExecutable (Join-Path $packageRelease 'scripts\release-integrity.mjs') create (Join-Path $packageRelease '.next\standalone') (Join-Path $packageRelease 'scripts') $manifest.commit
+    if($LASTEXITCODE-ne0){throw 'Staged release manifest creation failed'}
+    & $nodeExecutable (Join-Path $packageRelease 'scripts\release-signing.mjs') sign $stageManifest ([IO.Path]::GetFullPath($ReleaseSigningPrivateKey)) $stageSignature
+    if($LASTEXITCODE-ne0){throw 'Staged release signing failed'}
+    & $nodeExecutable (Join-Path $packageRelease 'scripts\release-signing.mjs') verify $stageManifest $stageSignature $publicKey
+    if($LASTEXITCODE-ne0){throw 'Staged release signature does not match the supplied public key'}
+    & $nodeExecutable (Join-Path $packageRelease 'scripts\release-integrity.mjs') verify (Join-Path $packageRelease '.next\standalone') (Join-Path $packageRelease 'scripts')
+    if($LASTEXITCODE-ne0){throw 'Staged signed release integrity verification failed'}
+  }
+  $defines=@("/DReleaseSource=$packageRelease","/DInstallerAssetsSource=$packageAssets","/DReleaseId=$ReleaseId","/DAppVersion=$AppVersion","/DReleasePublicKey=$publicKey","/DNodeRuntimeSource=$nodeRuntime","/DTrustedPublicKeySha256=$publicKeySha256","/DTrustedNodeRuntimeSha256=$nodeRuntimeSha256","/O$output")
+  & $CompilerPath @defines (Join-Path $PSScriptRoot 'PerformanceTracker.iss')
+  if($LASTEXITCODE-ne0){throw "Installer compilation failed with exit code $LASTEXITCODE"}
+} finally {
+  if($stage-and(Test-Path -LiteralPath $stage)){Remove-Item -LiteralPath $stage -Recurse -Force}
+}
 $installer=Get-ChildItem -LiteralPath $output -Filter "PerformanceTracker-$AppVersion-x64-setup.exe" -File|Select-Object -First 1
 if(-not$installer){throw 'Installer compiler completed without the expected executable'}
 if(-not$AllowUnsignedRehearsal){
-  if($SigningCertificateThumbprint-notmatch'^[0-9a-fA-F]{40,64}$'){throw 'A production Authenticode certificate thumbprint is required'}
   if(-not$SignToolPath){$signCommand=Get-Command signtool.exe -ErrorAction SilentlyContinue;if($signCommand){$SignToolPath=$signCommand.Source}}
   if(-not$SignToolPath-or-not(Test-Path -LiteralPath $SignToolPath -PathType Leaf)){throw 'Windows SDK signtool.exe is required for the production installer'}
-  $timestamp=$null
-  if(-not[Uri]::TryCreate($TimestampUrl,[UriKind]::Absolute,[ref]$timestamp)-or$timestamp.Scheme-ne'https'){throw 'TimestampUrl must be an absolute HTTPS URL'}
   & $SignToolPath sign /sha1 $SigningCertificateThumbprint /fd SHA256 /tr $TimestampUrl /td SHA256 $installer.FullName
   if($LASTEXITCODE-ne0){throw 'Authenticode signing failed'}
 }

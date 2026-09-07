@@ -16,6 +16,9 @@
 #ifndef TrustedNodeRuntimeSha256
   #error TrustedNodeRuntimeSha256 is required
 #endif
+#ifndef InstallerAssetsSource
+  #define InstallerAssetsSource "assets"
+#endif
 
 [Setup]
 AppId={{9A6D70E4-672D-4B1C-8C40-828942719A1A}
@@ -51,9 +54,9 @@ Source: "{#ReleaseSource}\deploy\*"; DestDir: "{app}\releases\{#ReleaseId}\deplo
 Source: "{#ReleasePublicKey}"; DestDir: "{app}\config"; DestName: "release-signing-public.pem"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "{#NodeRuntimeSource}\node.exe"; DestDir: "{app}\runtime"; Flags: ignoreversion
 Source: "{#NodeRuntimeSource}\LICENSE"; DestDir: "{app}\runtime"; DestName: "NODE-LICENSE"; Flags: ignoreversion
-Source: "assets\complete-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
-Source: "assets\repair-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
-Source: "assets\remove-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
+Source: "{#InstallerAssetsSource}\complete-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
+Source: "{#InstallerAssetsSource}\repair-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
+Source: "{#InstallerAssetsSource}\remove-installation.ps1"; DestDir: "{app}\installer"; Flags: ignoreversion
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy AllSigned -File ""{app}\installer\complete-installation.ps1"" -InstallRoot ""{app}"" -ReleaseId ""{#ReleaseId}"" -TrustedPublicKeySha256 ""{#TrustedPublicKeySha256}"" -TrustedNodeRuntimeSha256 ""{#TrustedNodeRuntimeSha256}"""; Description: "Complete secure deployment configuration"; Flags: postinstall waituntilterminated skipifsilent

@@ -24,6 +24,8 @@ Remove-Item Env:RELEASE_SIGNING_KEY_PASSPHRASE
 
 Transfer the immutable release package and detached signature together. `promote-release.ps1` requires `-TrustedPublicKeySha256` from the approved readiness record, checks that the key is outside the releases directory, verifies its fingerprint, and then verifies the signature before it stops or switches anything. A missing signature, changed manifest, substituted public key, invalid signature, mismatched package hash, or unrecognized signature format blocks promotion.
 
+For the Windows installer, `installer/build-installer.ps1` creates a disposable staging copy. Production PowerShell signatures are applied only there; the reviewed checkout and provenance-bound build remain unchanged. Because signing changes helper bytes, the builder recreates the staged integrity manifest and signs it with `-ReleaseSigningPrivateKey` using the separately supplied `RELEASE_SIGNING_KEY_PASSPHRASE`. It verifies the staged manifest and package before compilation and always removes staging. Never pass the custody key to rehearsal builds or place it in the repository, output directory, logs, or command history.
+
 Rotate the signing key after suspected compromise or under the organization's approved cryptographic schedule. Promotion must remain paused while the pinned public key is changed through an independently approved deployment action. Preserve old public keys with historical release evidence; never use them to approve new packages.
 
 ## Output safety and partial failures
