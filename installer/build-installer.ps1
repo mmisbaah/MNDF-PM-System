@@ -7,6 +7,7 @@ param(
   [string]$CompilerPath,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [string]$SignToolPath,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedSignToolSha256,
   [string]$SigningCertificateThumbprint,
   [string]$ReleaseSigningPrivateKey,
   [string]$TimestampUrl='https://timestamp.digicert.com',
@@ -55,6 +56,8 @@ foreach($reservedOutput in @($expectedInstaller,$buildRecordPath,$buildRecordSig
 $packageRelease=$release
 $packageAssets=Join-Path $PSScriptRoot 'assets'
 $stage=$null
+$signToolSha256=$null
+$signToolSigner=$null
 $productionScriptNames=@(
   'application-log-redaction.ps1','apply-migrations.ps1','backup-crypto.mjs','backup-postgres.ps1','backup-production.ps1',
   'deployment-journal.ps1','deployment-task-guards.ps1','export-audit-ledger.ps1','initialize-production-secrets.ps1',
@@ -77,6 +80,15 @@ try {
     if([string]::IsNullOrEmpty($env:RELEASE_SIGNING_KEY_PASSPHRASE)-or$env:RELEASE_SIGNING_KEY_PASSPHRASE.Length-lt20){throw 'RELEASE_SIGNING_KEY_PASSPHRASE is required for production staging'}
     $timestamp=$null
     if(-not[Uri]::TryCreate($TimestampUrl,[UriKind]::Absolute,[ref]$timestamp)-or$timestamp.Scheme-ne'https'){throw 'TimestampUrl must be an absolute HTTPS URL'}
+    if(-not$SignToolPath){$signCommand=Get-Command signtool.exe -ErrorAction SilentlyContinue;if($signCommand){$SignToolPath=$signCommand.Source}}
+    if(-not$SignToolPath-or-not(Test-Path -LiteralPath $SignToolPath -PathType Leaf)){throw 'Windows SDK signtool.exe is required for the production installer'}
+    if(-not$TrustedSignToolSha256){throw 'The independently approved signtool.exe SHA-256 fingerprint is required'}
+    $SignToolPath=[IO.Path]::GetFullPath($SignToolPath)
+    $signToolSha256=(Get-FileHash -LiteralPath $SignToolPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($signToolSha256-ne$TrustedSignToolSha256.ToLowerInvariant()){throw 'signtool.exe fingerprint does not match the approved release tool'}
+    $signToolSignature=Get-AuthenticodeSignature -LiteralPath $SignToolPath
+    if($signToolSignature.Status-ne'Valid'-or$signToolSignature.SignerCertificate.Subject-notmatch'(^|,\s*)O=Microsoft Corporation(,|$)'){throw 'signtool.exe must have a valid Microsoft Authenticode signature'}
+    $signToolSigner=$signToolSignature.SignerCertificate.Subject
     $stage=Join-Path ([IO.Path]::GetTempPath()) ("PerformanceTracker-installer-stage-"+[guid]::NewGuid().ToString('N'))
     $packageRelease=Join-Path $stage 'release';$packageAssets=Join-Path $stage 'assets'
     New-Item -ItemType Directory -Path $packageRelease,$packageAssets,(Join-Path $packageRelease '.next'),(Join-Path $packageRelease 'scripts')|Out-Null
@@ -114,8 +126,6 @@ try {
 $installer=Get-Item -LiteralPath $expectedInstaller -ErrorAction SilentlyContinue
 if(-not$installer-or$installer.PSIsContainer){throw 'Installer compiler completed without the expected executable'}
 if(-not$AllowUnsignedRehearsal){
-  if(-not$SignToolPath){$signCommand=Get-Command signtool.exe -ErrorAction SilentlyContinue;if($signCommand){$SignToolPath=$signCommand.Source}}
-  if(-not$SignToolPath-or-not(Test-Path -LiteralPath $SignToolPath -PathType Leaf)){throw 'Windows SDK signtool.exe is required for the production installer'}
   & $SignToolPath sign /sha1 $SigningCertificateThumbprint /fd SHA256 /tr $TimestampUrl /td SHA256 $installer.FullName
   if($LASTEXITCODE-ne0){throw 'Authenticode signing failed'}
 }
@@ -125,7 +135,7 @@ if(-not$AllowUnsignedRehearsal-and-not$signature.TimeStamperCertificate){throw '
 if(-not$AllowUnsignedRehearsal-and$signature.SignerCertificate.Thumbprint-ne$SigningCertificateThumbprint){throw 'Compiled installer signer does not match the approved certificate thumbprint'}
 $allowlistBytes=[Text.Encoding]::UTF8.GetBytes(((@($productionScriptNames|Sort-Object)-join"`n")+"`n"))
 $allowlistSha256=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($allowlistBytes)).Replace('-','').ToLowerInvariant()
-$record=[ordered]@{format='performance-tracker-installer-build-v5';installerFile=[IO.Path]::GetFileName($installer.FullName);recordFile=[IO.Path]::GetFileName($buildRecordPath);recordSignatureFile=if($AllowUnsignedRehearsal){$null}else{[IO.Path]::GetFileName($buildRecordSignaturePath)};sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;authenticodeStatus=[string]$signature.Status;installerSignerSubject=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Subject};installerSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Thumbprint.ToLowerInvariant()};timestampSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()};productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
+$record=[ordered]@{format='performance-tracker-installer-build-v6';installerFile=[IO.Path]::GetFileName($installer.FullName);recordFile=[IO.Path]::GetFileName($buildRecordPath);recordSignatureFile=if($AllowUnsignedRehearsal){$null}else{[IO.Path]::GetFileName($buildRecordSignaturePath)};sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;signToolSha256=$signToolSha256;signToolSigner=$signToolSigner;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;authenticodeStatus=[string]$signature.Status;installerSignerSubject=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Subject};installerSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Thumbprint.ToLowerInvariant()};timestampSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()};productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
 $recordJson=$record|ConvertTo-Json -Depth 3
 $stream=[IO.File]::Open($buildRecordPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
 try{$writer=[IO.StreamWriter]::new($stream,[Text.UTF8Encoding]::new($false));$writer.Write($recordJson+"`n");$writer.Flush()}finally{if($writer){$writer.Dispose()}else{$stream.Dispose()}}
