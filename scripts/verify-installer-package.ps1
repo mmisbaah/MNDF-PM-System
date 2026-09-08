@@ -8,6 +8,7 @@ param(
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedTimestampCertificateThumbprint,
   [ValidatePattern('^\d+\.\d+\.\d+([.-][A-Za-z0-9.-]+)?$')][string]$ApprovedAppVersion,
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedReleaseCommit,
+  [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')][string]$ApprovedReleaseId,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleasePublicKeySha256,
@@ -45,6 +46,8 @@ if($AllowUnsignedRehearsal){
   if($record.version-ne$ApprovedAppVersion){throw 'Installer version does not match the independently approved release'}
   if(-not$ApprovedReleaseCommit){throw 'The independently approved release commit is required'}
   if($record.releaseCommit-ne$ApprovedReleaseCommit.ToLowerInvariant()){throw 'Installer source commit does not match the independently approved release'}
+  if(-not$ApprovedReleaseId){throw 'The independently approved release identifier is required'}
+  if($record.releaseId-ne$ApprovedReleaseId){throw 'Installer release identifier does not match the independently approved deployment'}
   if($record.compilerSha256-ne$ApprovedCompilerSha256.ToLowerInvariant()){throw 'Installer compiler does not match the independently approved fingerprint'}
   if(-not$ApprovedSignToolSha256){throw 'The independently approved signtool.exe SHA-256 fingerprint is required'}
   if(-not$ApprovedReleasePublicKeySha256){throw 'The independently approved release public-key SHA-256 fingerprint is required'}

@@ -54,6 +54,8 @@ Assert-Match $verifier 'actualInstallerHash-ne\$ApprovedInstallerSha256.ToLowerI
 Assert-Match $verifier 'record.version-ne\$ApprovedAppVersion' 'Package verifier must reject an unapproved release version'
 Assert-Match $verifier 'ApprovedReleaseCommit' 'Package verifier must require the independently approved source commit'
 Assert-Match $verifier 'record.releaseCommit-ne\$ApprovedReleaseCommit.ToLowerInvariant' 'Package verifier must reject an unapproved source commit'
+Assert-Match $verifier 'ApprovedReleaseId' 'Package verifier must require the independently approved release identifier'
+Assert-Match $verifier 'record.releaseId-ne\$ApprovedReleaseId' 'Package verifier must reject an unapproved release identifier'
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'
