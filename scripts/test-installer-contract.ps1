@@ -66,7 +66,8 @@ Assert-Match $packageAcl 'Assert-UnchangedInstallerBundle' 'Package verifier mus
 Assert-Match $verifier 'Assert-UnchangedInstallerBundle \$bundleInitialHashes' 'Package verifier must reject artifacts changed while verification runs'
 if($verifier.LastIndexOf('Assert-UnchangedInstallerBundle $bundleInitialHashes')-lt$verifier.IndexOf("& $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify")){throw 'Bundle stability must be checked after cryptographic verification'}
 Assert-Match $packageAcl 'FileShare\]::Read' 'Installer bundle lock must deny concurrent writes and replacement'
-Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature\)' 'Installer launch must lock the complete signed handoff bundle'
+Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature,\$publicKey,\$node\)' 'Installer launch must lock the signed handoff bundle and external trust inputs'
+Assert-Match $launcher 'NodeRuntimeDirectory\)\) ''node\.exe''' 'Installer launch must lock the exact approved runtime executable'
 Assert-Match $launcher '& \$verifier @verification' 'Installer launch must perform production verification while the bundle is locked'
 Assert-Match $launcher 'Start-Process -FilePath \$installer -Wait -PassThru' 'Only the locked verified installer may be launched'
 if($launcher.IndexOf('& $verifier @verification')-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Installer must be verified before launch'}
@@ -76,6 +77,7 @@ Assert-Match $launcher '\$toolStreams.Add\(\[IO.File\]::Open\(.+\[IO.FileShare\]
 if($launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')-gt$launcher.IndexOf('. $aclHelper')){throw 'Verification tooling must be fingerprinted before helper code is loaded'}
 if($launcher.IndexOf('$toolStreams.Add')-gt$launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')){throw 'Verification tooling must be locked before fingerprinting'}
 if($launcher.IndexOf('$toolStreams[$index].Dispose()')-lt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Verification-tool locks must remain held through installer execution'}
+if($launcher.IndexOf('Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node)')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Package and trust inputs must be locked before cryptographic verification'}
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'

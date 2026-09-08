@@ -41,15 +41,17 @@ try {
   $installer=[IO.Path]::GetFullPath($InstallerPath)
   $record=[IO.Path]::GetFullPath($BuildRecordPath)
   $signature="$record.sig.json"
+  $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
+  $node=Join-Path ([IO.Path]::GetFullPath($NodeRuntimeDirectory)) 'node.exe'
   $verification=@{
-    InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$ReleasePublicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
+    InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$publicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
     ApprovedInstallerSha256=$ApprovedInstallerSha256;ApprovedSigningCertificateThumbprint=$ApprovedSigningCertificateThumbprint
     ApprovedTimestampCertificateThumbprint=$ApprovedTimestampCertificateThumbprint;ApprovedAppVersion=$ApprovedAppVersion
     ApprovedReleaseCommit=$ApprovedReleaseCommit;ApprovedReleaseId=$ApprovedReleaseId;ApprovedCompilerSha256=$ApprovedCompilerSha256
     ApprovedSignToolSha256=$ApprovedSignToolSha256;ApprovedReleasePublicKeySha256=$ApprovedReleasePublicKeySha256
     ApprovedNodeRuntimeSha256=$ApprovedNodeRuntimeSha256;ApprovedPackageCustodians=$ApprovedPackageCustodians
   }
-  Invoke-WithLockedInstallerBundle @($installer,$record,$signature) {
+  Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node) {
     & $verifier @verification
     $process=Start-Process -FilePath $installer -Wait -PassThru
     if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
