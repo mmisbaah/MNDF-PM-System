@@ -25,3 +25,11 @@ function Assert-ProtectedPackageAcl([string]$Directory,[string[]]$Files,[string[
     }
   }
 }
+
+function Assert-UnchangedInstallerBundle([hashtable]$InitialHashes){
+  foreach($path in $InitialHashes.Keys){
+    if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Installer handoff artifact disappeared during verification: $path"}
+    $current=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($current-ne$InitialHashes[$path]){throw "Installer handoff artifact changed during verification: $path"}
+  }
+}

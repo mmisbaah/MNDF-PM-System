@@ -61,6 +61,9 @@ Assert-Match $verifier 'ApprovedPackageCustodians' 'Package verifier must requir
 Assert-Match $packageAcl 'AreAccessRulesProtected' 'Package verifier must require protected handoff ACL inheritance'
 Assert-Match $packageAcl 'Installer handoff artifact has an unapproved writer' 'Package verifier must reject unapproved bundle writers'
 Assert-Match $verifier 'Assert-ProtectedPackageAcl \$artifactDirectory' 'Package verifier must inspect the installer and signed evidence bundle'
+Assert-Match $packageAcl 'Assert-UnchangedInstallerBundle' 'Package verifier must provide a complete bundle stability check'
+Assert-Match $verifier 'Assert-UnchangedInstallerBundle \$bundleInitialHashes' 'Package verifier must reject artifacts changed while verification runs'
+if($verifier.LastIndexOf('Assert-UnchangedInstallerBundle $bundleInitialHashes')-lt$verifier.IndexOf("& $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify")){throw 'Bundle stability must be checked after cryptographic verification'}
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'

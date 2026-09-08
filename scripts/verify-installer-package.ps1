@@ -35,6 +35,7 @@ foreach($hash in @($record.sha256,$record.compilerSha256,$record.nodeRuntimeSha2
 }
 if(([string]$record.releaseCommit)-notmatch'^[0-9a-f]{40}$'){throw 'Installer provenance contains an invalid source commit'}
 $actualInstallerHash=(Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+$recordInitialHash=(Get-FileHash -LiteralPath $recordPath -Algorithm SHA256).Hash.ToLowerInvariant()
 if($actualInstallerHash-ne$record.sha256){throw 'Installer executable hash does not match its provenance record'}
 if($AllowUnsignedRehearsal){
   if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile-or$null-ne$record.installerSignerThumbprint-or$null-ne$record.timestampSignerThumbprint-or$null-ne$record.signToolSha256-or$null-ne$record.signToolSigner){throw 'Artifact is not a valid unsigned rehearsal bundle'}
@@ -72,6 +73,7 @@ if($AllowUnsignedRehearsal){
   $recordSignature=Join-Path $artifactDirectory ([string]$record.recordSignatureFile)
   if($recordSignature-ne"$recordPath.sig.json"-or-not(Test-Path -LiteralPath $recordSignature -PathType Leaf)){throw 'Installer provenance signature is missing or misplaced'}
   Assert-ProtectedPackageAcl $artifactDirectory @($installer,$recordPath,$recordSignature) $ApprovedPackageCustodians
+  $bundleInitialHashes=@{$installer=$actualInstallerHash;$recordPath=$recordInitialHash;$recordSignature=(Get-FileHash -LiteralPath $recordSignature -Algorithm SHA256).Hash.ToLowerInvariant()}
   if(-not$NodeRuntimeDirectory){throw 'Approved portable Node.js runtime is required'}
   $node=Join-Path ([IO.Path]::GetFullPath($NodeRuntimeDirectory)) 'node.exe'
   if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Approved portable Node.js runtime was not found'}
@@ -83,5 +85,6 @@ if($AllowUnsignedRehearsal){
   if([string]::IsNullOrWhiteSpace([string]$record.nodeRuntimeSigner)-or$runtimeSignature.SignerCertificate.Subject-ne$record.nodeRuntimeSigner){throw 'Verification runtime publisher does not match installer provenance'}
   & $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify $recordPath $recordSignature $publicKey
   if($LASTEXITCODE-ne0){throw 'Installer provenance signature verification failed'}
+  Assert-UnchangedInstallerBundle $bundleInitialHashes
 }
 Write-Output "Installer package verification passed: $actualInstallerHash"

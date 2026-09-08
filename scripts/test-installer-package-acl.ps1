@@ -11,6 +11,16 @@ try{
   if(-not$failed){throw 'Inherited handoff directory ACL was accepted'}
   Set-ExactProductionAcl -Path $root -ServiceAccount $readOnlySid -Administrators @($currentSid) -ServiceRights ReadAndExecute
   Assert-ProtectedPackageAcl $root $files @($currentSid)
+  $initial=@{};foreach($file in $files){$initial[$file]=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
+  Assert-UnchangedInstallerBundle $initial
+  [IO.File]::AppendAllText($files[1],'changed')
+  $failed=$false;try{Assert-UnchangedInstallerBundle $initial}catch{$failed=$_.Exception.Message-match'changed during verification'}
+  if(-not$failed){throw 'Mid-verification bundle mutation was accepted'}
+  [IO.File]::WriteAllText($files[1],'test')
+  Remove-Item -LiteralPath $files[2]
+  $failed=$false;try{Assert-UnchangedInstallerBundle $initial}catch{$failed=$_.Exception.Message-match'disappeared during verification'}
+  if(-not$failed){throw 'Mid-verification bundle removal was accepted'}
+  [IO.File]::WriteAllText($files[2],'test')
   $failed=$false;try{Assert-ProtectedPackageAcl $root $files @('S-1-5-32-545')}catch{$failed=$_.Exception.Message-match'Broad identities'}
   if(-not$failed){throw 'Broad package custodian was accepted'}
   $acl=Get-Acl -LiteralPath $files[0]
