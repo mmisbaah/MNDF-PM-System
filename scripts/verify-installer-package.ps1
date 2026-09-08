@@ -13,9 +13,11 @@ param(
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleasePublicKeySha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
+  [string[]]$ApprovedPackageCustodians,
   [switch]$AllowUnsignedRehearsal
 )
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'installer-package-acl.ps1')
 $installer=[IO.Path]::GetFullPath($InstallerPath)
 $recordPath=[IO.Path]::GetFullPath($BuildRecordPath)
 if(-not(Test-Path -LiteralPath $installer -PathType Leaf)){throw 'Installer executable was not found'}
@@ -69,6 +71,7 @@ if($AllowUnsignedRehearsal){
   if([IO.Path]::GetFileName([string]$record.recordSignatureFile)-ne$record.recordSignatureFile){throw 'Installer provenance contains an unsafe signature filename'}
   $recordSignature=Join-Path $artifactDirectory ([string]$record.recordSignatureFile)
   if($recordSignature-ne"$recordPath.sig.json"-or-not(Test-Path -LiteralPath $recordSignature -PathType Leaf)){throw 'Installer provenance signature is missing or misplaced'}
+  Assert-ProtectedPackageAcl $artifactDirectory @($installer,$recordPath,$recordSignature) $ApprovedPackageCustodians
   if(-not$NodeRuntimeDirectory){throw 'Approved portable Node.js runtime is required'}
   $node=Join-Path ([IO.Path]::GetFullPath($NodeRuntimeDirectory)) 'node.exe'
   if(-not(Test-Path -LiteralPath $node -PathType Leaf)){throw 'Approved portable Node.js runtime was not found'}

@@ -3,6 +3,7 @@ $project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $iss=Get-Content -LiteralPath (Join-Path $project 'installer\PerformanceTracker.iss') -Raw
 $builder=Get-Content -LiteralPath (Join-Path $project 'installer\build-installer.ps1') -Raw
 $verifier=Get-Content -LiteralPath (Join-Path $project 'scripts\verify-installer-package.ps1') -Raw
+$packageAcl=Get-Content -LiteralPath (Join-Path $project 'scripts\installer-package-acl.ps1') -Raw
 $completion=Get-Content -LiteralPath (Join-Path $project 'installer\assets\complete-installation.ps1') -Raw
 $removal=Get-Content -LiteralPath (Join-Path $project 'installer\assets\remove-installation.ps1') -Raw
 function Assert-Match([string]$Value,[string]$Pattern,[string]$Message){if($Value-notmatch$Pattern){throw $Message}}
@@ -56,6 +57,10 @@ Assert-Match $verifier 'ApprovedReleaseCommit' 'Package verifier must require th
 Assert-Match $verifier 'record.releaseCommit-ne\$ApprovedReleaseCommit.ToLowerInvariant' 'Package verifier must reject an unapproved source commit'
 Assert-Match $verifier 'ApprovedReleaseId' 'Package verifier must require the independently approved release identifier'
 Assert-Match $verifier 'record.releaseId-ne\$ApprovedReleaseId' 'Package verifier must reject an unapproved release identifier'
+Assert-Match $verifier 'ApprovedPackageCustodians' 'Package verifier must require explicit handoff custodians'
+Assert-Match $packageAcl 'AreAccessRulesProtected' 'Package verifier must require protected handoff ACL inheritance'
+Assert-Match $packageAcl 'Installer handoff artifact has an unapproved writer' 'Package verifier must reject unapproved bundle writers'
+Assert-Match $verifier 'Assert-ProtectedPackageAcl \$artifactDirectory' 'Package verifier must inspect the installer and signed evidence bundle'
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'
