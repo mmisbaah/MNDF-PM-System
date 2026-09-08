@@ -21,6 +21,13 @@ try{
   $failed=$false;try{Assert-UnchangedInstallerBundle $initial}catch{$failed=$_.Exception.Message-match'disappeared during verification'}
   if(-not$failed){throw 'Mid-verification bundle removal was accepted'}
   [IO.File]::WriteAllText($files[2],'test')
+  $lockRejected=$false
+  Invoke-WithLockedInstallerBundle $files {
+    try{[IO.File]::Open($files[0],[IO.FileMode]::Open,[IO.FileAccess]::Write,[IO.FileShare]::None).Dispose()}catch{$lockRejected=$true}
+    if(-not$lockRejected){throw 'Installer bundle lock permitted a concurrent writer'}
+  }
+  $writeAfterRelease=[IO.File]::Open($files[0],[IO.FileMode]::Open,[IO.FileAccess]::Write,[IO.FileShare]::None)
+  $writeAfterRelease.Dispose()
   $failed=$false;try{Assert-ProtectedPackageAcl $root $files @('S-1-5-32-545')}catch{$failed=$_.Exception.Message-match'Broad identities'}
   if(-not$failed){throw 'Broad package custodian was accepted'}
   $acl=Get-Acl -LiteralPath $files[0]

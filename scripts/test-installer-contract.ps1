@@ -3,6 +3,7 @@ $project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $iss=Get-Content -LiteralPath (Join-Path $project 'installer\PerformanceTracker.iss') -Raw
 $builder=Get-Content -LiteralPath (Join-Path $project 'installer\build-installer.ps1') -Raw
 $verifier=Get-Content -LiteralPath (Join-Path $project 'scripts\verify-installer-package.ps1') -Raw
+$launcher=Get-Content -LiteralPath (Join-Path $project 'scripts\install-verified-package.ps1') -Raw
 $packageAcl=Get-Content -LiteralPath (Join-Path $project 'scripts\installer-package-acl.ps1') -Raw
 $completion=Get-Content -LiteralPath (Join-Path $project 'installer\assets\complete-installation.ps1') -Raw
 $removal=Get-Content -LiteralPath (Join-Path $project 'installer\assets\remove-installation.ps1') -Raw
@@ -64,6 +65,11 @@ Assert-Match $verifier 'Assert-ProtectedPackageAcl \$artifactDirectory' 'Package
 Assert-Match $packageAcl 'Assert-UnchangedInstallerBundle' 'Package verifier must provide a complete bundle stability check'
 Assert-Match $verifier 'Assert-UnchangedInstallerBundle \$bundleInitialHashes' 'Package verifier must reject artifacts changed while verification runs'
 if($verifier.LastIndexOf('Assert-UnchangedInstallerBundle $bundleInitialHashes')-lt$verifier.IndexOf("& $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify")){throw 'Bundle stability must be checked after cryptographic verification'}
+Assert-Match $packageAcl 'FileShare\]::Read' 'Installer bundle lock must deny concurrent writes and replacement'
+Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature\)' 'Installer launch must lock the complete signed handoff bundle'
+Assert-Match $launcher "verify-installer-package\.ps1'\) @verification" 'Installer launch must perform production verification while the bundle is locked'
+Assert-Match $launcher 'Start-Process -FilePath \$installer -Wait -PassThru' 'Only the locked verified installer may be launched'
+if($launcher.IndexOf("verify-installer-package.ps1') @verification")-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Installer must be verified before launch'}
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'

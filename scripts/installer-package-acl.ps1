@@ -33,3 +33,17 @@ function Assert-UnchangedInstallerBundle([hashtable]$InitialHashes){
     if($current-ne$InitialHashes[$path]){throw "Installer handoff artifact changed during verification: $path"}
   }
 }
+
+function Invoke-WithLockedInstallerBundle([string[]]$Paths,[scriptblock]$Action){
+  if(-not$Paths.Count){throw 'Installer bundle paths are required'}
+  $streams=[Collections.Generic.List[IO.FileStream]]::new()
+  try {
+    foreach($path in $Paths){
+      if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Installer handoff artifact is missing: $path"}
+      $streams.Add([IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read))
+    }
+    & $Action
+  } finally {
+    for($index=$streams.Count-1;$index-ge0;$index--){$streams[$index].Dispose()}
+  }
+}
