@@ -19,4 +19,8 @@ $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 $launcherHash -Ap
 if(-not$failed){throw 'Installer launcher accepted an unapproved ACL helper fingerprint'}
 $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 $launcherHash -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 $helperHash}catch{$failed=$_.Exception.Message-match'Installer handoff artifact is missing'}
 if(-not$failed){throw 'Approved verification tools did not reach fail-closed bundle validation'}
+foreach($tool in @($launcher,$verifier,$aclHelper)){
+  $released=[IO.File]::Open($tool,[IO.FileMode]::Open,[IO.FileAccess]::Write,[IO.FileShare]::ReadWrite)
+  $released.Dispose()
+}
 Write-Output 'Installer launcher integrity tests passed.'

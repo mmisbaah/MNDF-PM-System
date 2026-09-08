@@ -22,30 +22,39 @@ $ErrorActionPreference='Stop'
 $launcher=[IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
 $verifier=Join-Path $PSScriptRoot 'verify-installer-package.ps1'
 $aclHelper=Join-Path $PSScriptRoot 'installer-package-acl.ps1'
-foreach($tool in @(
+$tools=@(
   @{Path=$launcher;Approved=$ApprovedLauncherSha256;Name='installer launcher'},
   @{Path=$verifier;Approved=$ApprovedVerifierSha256;Name='package verifier'},
   @{Path=$aclHelper;Approved=$ApprovedAclHelperSha256;Name='ACL helper'}
-)){
-  if(-not(Test-Path -LiteralPath $tool.Path -PathType Leaf)){throw "Approved $($tool.Name) was not found"}
-  $actual=(Get-FileHash -LiteralPath $tool.Path -Algorithm SHA256).Hash.ToLowerInvariant()
-  if($actual-ne$tool.Approved.ToLowerInvariant()){throw "Approved $($tool.Name) fingerprint does not match"}
-}
-. $aclHelper
-$installer=[IO.Path]::GetFullPath($InstallerPath)
-$record=[IO.Path]::GetFullPath($BuildRecordPath)
-$signature="$record.sig.json"
-$verification=@{
-  InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$ReleasePublicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
-  ApprovedInstallerSha256=$ApprovedInstallerSha256;ApprovedSigningCertificateThumbprint=$ApprovedSigningCertificateThumbprint
-  ApprovedTimestampCertificateThumbprint=$ApprovedTimestampCertificateThumbprint;ApprovedAppVersion=$ApprovedAppVersion
-  ApprovedReleaseCommit=$ApprovedReleaseCommit;ApprovedReleaseId=$ApprovedReleaseId;ApprovedCompilerSha256=$ApprovedCompilerSha256
-  ApprovedSignToolSha256=$ApprovedSignToolSha256;ApprovedReleasePublicKeySha256=$ApprovedReleasePublicKeySha256
-  ApprovedNodeRuntimeSha256=$ApprovedNodeRuntimeSha256;ApprovedPackageCustodians=$ApprovedPackageCustodians
-}
-Invoke-WithLockedInstallerBundle @($installer,$record,$signature) {
-  & $verifier @verification
-  $process=Start-Process -FilePath $installer -Wait -PassThru
-  if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
+)
+$toolStreams=[Collections.Generic.List[IO.FileStream]]::new()
+try {
+  foreach($tool in $tools){
+    if(-not(Test-Path -LiteralPath $tool.Path -PathType Leaf)){throw "Approved $($tool.Name) was not found"}
+    $toolStreams.Add([IO.File]::Open($tool.Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read))
+  }
+  foreach($tool in $tools){
+    $actual=(Get-FileHash -LiteralPath $tool.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($actual-ne$tool.Approved.ToLowerInvariant()){throw "Approved $($tool.Name) fingerprint does not match"}
+  }
+  . $aclHelper
+  $installer=[IO.Path]::GetFullPath($InstallerPath)
+  $record=[IO.Path]::GetFullPath($BuildRecordPath)
+  $signature="$record.sig.json"
+  $verification=@{
+    InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$ReleasePublicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
+    ApprovedInstallerSha256=$ApprovedInstallerSha256;ApprovedSigningCertificateThumbprint=$ApprovedSigningCertificateThumbprint
+    ApprovedTimestampCertificateThumbprint=$ApprovedTimestampCertificateThumbprint;ApprovedAppVersion=$ApprovedAppVersion
+    ApprovedReleaseCommit=$ApprovedReleaseCommit;ApprovedReleaseId=$ApprovedReleaseId;ApprovedCompilerSha256=$ApprovedCompilerSha256
+    ApprovedSignToolSha256=$ApprovedSignToolSha256;ApprovedReleasePublicKeySha256=$ApprovedReleasePublicKeySha256
+    ApprovedNodeRuntimeSha256=$ApprovedNodeRuntimeSha256;ApprovedPackageCustodians=$ApprovedPackageCustodians
+  }
+  Invoke-WithLockedInstallerBundle @($installer,$record,$signature) {
+    & $verifier @verification
+    $process=Start-Process -FilePath $installer -Wait -PassThru
+    if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
+  }
+} finally {
+  for($index=$toolStreams.Count-1;$index-ge0;$index--){$toolStreams[$index].Dispose()}
 }
 Write-Output 'Verified installer completed successfully.'
