@@ -3,6 +3,7 @@ param(
   [Parameter(Mandatory=$true)][string]$BuildRecordPath,
   [string]$ReleasePublicKey,
   [string]$NodeRuntimeDirectory,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedInstallerSha256,
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedSigningCertificateThumbprint,
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$ApprovedTimestampCertificateThumbprint,
   [ValidatePattern('^\d+\.\d+\.\d+([.-][A-Za-z0-9.-]+)?$')][string]$ApprovedAppVersion,
@@ -36,6 +37,8 @@ if($AllowUnsignedRehearsal){
   if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile-or$null-ne$record.installerSignerThumbprint-or$null-ne$record.timestampSignerThumbprint-or$null-ne$record.signToolSha256-or$null-ne$record.signToolSigner){throw 'Artifact is not a valid unsigned rehearsal bundle'}
 } else {
   if($record.productionAuthorized-ne$true-or$record.authenticodeStatus-ne'Valid'){throw 'Installer provenance does not authorize production use'}
+  if(-not$ApprovedInstallerSha256){throw 'The independently approved installer SHA-256 fingerprint is required'}
+  if($actualInstallerHash-ne$ApprovedInstallerSha256.ToLowerInvariant()){throw 'Installer executable does not match the independently approved fingerprint'}
   if(-not$ApprovedSigningCertificateThumbprint){throw 'The independently approved code-signing certificate thumbprint is required'}
   if(-not$ApprovedTimestampCertificateThumbprint){throw 'The independently approved RFC 3161 timestamp certificate thumbprint is required'}
   if(-not$ApprovedAppVersion){throw 'The independently approved application version is required'}

@@ -49,6 +49,8 @@ Assert-Match $builder 'TimeStamperCertificate.Thumbprint-ne\$TrustedTimestampCer
 Assert-Match $verifier 'ApprovedTimestampCertificateThumbprint' 'Package verifier must require independent timestamp-authority approval'
 Assert-Match $verifier 'TimeStamperCertificate.Thumbprint-ne\$ApprovedTimestampCertificateThumbprint' 'Package verifier must enforce the approved timestamp authority'
 Assert-Match $verifier 'ApprovedAppVersion' 'Package verifier must require the independently approved release version'
+Assert-Match $verifier 'ApprovedInstallerSha256' 'Package verifier must require the independently approved installer fingerprint'
+Assert-Match $verifier 'actualInstallerHash-ne\$ApprovedInstallerSha256.ToLowerInvariant' 'Package verifier must reject an installer outside the approved handoff'
 Assert-Match $verifier 'record.version-ne\$ApprovedAppVersion' 'Package verifier must reject an unapproved release version'
 Assert-Match $verifier 'ApprovedReleaseCommit' 'Package verifier must require the independently approved source commit'
 Assert-Match $verifier 'record.releaseCommit-ne\$ApprovedReleaseCommit.ToLowerInvariant' 'Package verifier must reject an unapproved source commit'
