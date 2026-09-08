@@ -67,9 +67,12 @@ Assert-Match $verifier 'Assert-UnchangedInstallerBundle \$bundleInitialHashes' '
 if($verifier.LastIndexOf('Assert-UnchangedInstallerBundle $bundleInitialHashes')-lt$verifier.IndexOf("& $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify")){throw 'Bundle stability must be checked after cryptographic verification'}
 Assert-Match $packageAcl 'FileShare\]::Read' 'Installer bundle lock must deny concurrent writes and replacement'
 Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature\)' 'Installer launch must lock the complete signed handoff bundle'
-Assert-Match $launcher "verify-installer-package\.ps1'\) @verification" 'Installer launch must perform production verification while the bundle is locked'
+Assert-Match $launcher '& \$verifier @verification' 'Installer launch must perform production verification while the bundle is locked'
 Assert-Match $launcher 'Start-Process -FilePath \$installer -Wait -PassThru' 'Only the locked verified installer may be launched'
-if($launcher.IndexOf("verify-installer-package.ps1') @verification")-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Installer must be verified before launch'}
+if($launcher.IndexOf('& $verifier @verification')-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Installer must be verified before launch'}
+foreach($approval in @('ApprovedLauncherSha256','ApprovedVerifierSha256','ApprovedAclHelperSha256')){Assert-Match $launcher $approval "Installer launcher must require $approval"}
+Assert-Match $launcher 'Get-FileHash -LiteralPath \$tool.Path' 'Installer launcher must fingerprint verification tooling before use'
+if($launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')-gt$launcher.IndexOf('. $aclHelper')){throw 'Verification tooling must be fingerprinted before helper code is loaded'}
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'

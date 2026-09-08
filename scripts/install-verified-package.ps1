@@ -11,12 +11,27 @@ param(
   [Parameter(Mandatory=$true)][ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')][string]$ApprovedReleaseId,
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedSignToolSha256,
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleasePublicKeySha256,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedLauncherSha256,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedVerifierSha256,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedAclHelperSha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
   [Parameter(Mandatory=$true)][string[]]$ApprovedPackageCustodians
 )
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'installer-package-acl.ps1')
+$launcher=[IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
+$verifier=Join-Path $PSScriptRoot 'verify-installer-package.ps1'
+$aclHelper=Join-Path $PSScriptRoot 'installer-package-acl.ps1'
+foreach($tool in @(
+  @{Path=$launcher;Approved=$ApprovedLauncherSha256;Name='installer launcher'},
+  @{Path=$verifier;Approved=$ApprovedVerifierSha256;Name='package verifier'},
+  @{Path=$aclHelper;Approved=$ApprovedAclHelperSha256;Name='ACL helper'}
+)){
+  if(-not(Test-Path -LiteralPath $tool.Path -PathType Leaf)){throw "Approved $($tool.Name) was not found"}
+  $actual=(Get-FileHash -LiteralPath $tool.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($actual-ne$tool.Approved.ToLowerInvariant()){throw "Approved $($tool.Name) fingerprint does not match"}
+}
+. $aclHelper
 $installer=[IO.Path]::GetFullPath($InstallerPath)
 $record=[IO.Path]::GetFullPath($BuildRecordPath)
 $signature="$record.sig.json"
@@ -29,7 +44,7 @@ $verification=@{
   ApprovedNodeRuntimeSha256=$ApprovedNodeRuntimeSha256;ApprovedPackageCustodians=$ApprovedPackageCustodians
 }
 Invoke-WithLockedInstallerBundle @($installer,$record,$signature) {
-  & (Join-Path $PSScriptRoot 'verify-installer-package.ps1') @verification
+  & $verifier @verification
   $process=Start-Process -FilePath $installer -Wait -PassThru
   if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
 }
