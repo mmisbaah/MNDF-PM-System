@@ -43,6 +43,8 @@ try {
   $signature="$record.sig.json"
   $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
   $node=Join-Path ([IO.Path]::GetFullPath($NodeRuntimeDirectory)) 'node.exe'
+  Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($publicKey)) @($publicKey) $ApprovedPackageCustodians
+  Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($node)) @($node) $ApprovedPackageCustodians
   $verification=@{
     InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$publicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
     ApprovedInstallerSha256=$ApprovedInstallerSha256;ApprovedSigningCertificateThumbprint=$ApprovedSigningCertificateThumbprint

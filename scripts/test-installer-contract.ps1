@@ -68,6 +68,8 @@ if($verifier.LastIndexOf('Assert-UnchangedInstallerBundle $bundleInitialHashes')
 Assert-Match $packageAcl 'FileShare\]::Read' 'Installer bundle lock must deny concurrent writes and replacement'
 Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature,\$publicKey,\$node\)' 'Installer launch must lock the signed handoff bundle and external trust inputs'
 Assert-Match $launcher 'NodeRuntimeDirectory\)\) ''node\.exe''' 'Installer launch must lock the exact approved runtime executable'
+Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$publicKey\)\) @\(\$publicKey\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved release-key writers'
+Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$node\)\) @\(\$node\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved runtime writers'
 Assert-Match $launcher '& \$verifier @verification' 'Installer launch must perform production verification while the bundle is locked'
 Assert-Match $launcher 'Start-Process -FilePath \$installer -Wait -PassThru' 'Only the locked verified installer may be launched'
 if($launcher.IndexOf('& $verifier @verification')-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Installer must be verified before launch'}
@@ -78,6 +80,8 @@ if($launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')-gt$launcher.IndexOf
 if($launcher.IndexOf('$toolStreams.Add')-gt$launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')){throw 'Verification tooling must be locked before fingerprinting'}
 if($launcher.IndexOf('$toolStreams[$index].Dispose()')-lt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Verification-tool locks must remain held through installer execution'}
 if($launcher.IndexOf('Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node)')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Package and trust inputs must be locked before cryptographic verification'}
+if($launcher.IndexOf('Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($publicKey))')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Release-key ACL must be verified before cryptographic use'}
+if($launcher.IndexOf('Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($node))')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Runtime ACL must be verified before execution'}
 Assert-Match $builder 'SignerCertificate\.Thumbprint-ne\$SigningCertificateThumbprint' 'Builder must match the compiled EXE to the requested signing certificate'
 Assert-Match $builder 'TrustedSignToolSha256' 'Builder must require an independently approved signtool.exe fingerprint'
 Assert-Match $builder 'O=Microsoft Corporation' 'Builder must require the Microsoft Authenticode publisher on signtool.exe'

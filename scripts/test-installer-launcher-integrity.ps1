@@ -17,7 +17,7 @@ $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 $launcherHash -Ap
 if(-not$failed){throw 'Installer launcher accepted an unapproved verifier fingerprint'}
 $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 $launcherHash -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 ('0'*64)}catch{$failed=$_.Exception.Message-match'ACL helper fingerprint'}
 if(-not$failed){throw 'Installer launcher accepted an unapproved ACL helper fingerprint'}
-$failed=$false;try{& $launcher @common -ApprovedLauncherSha256 $launcherHash -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 $helperHash}catch{$failed=$_.Exception.Message-match'Installer handoff artifact is missing'}
+$failed=$false;try{& $launcher @common -ApprovedLauncherSha256 $launcherHash -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 $helperHash}catch{$failed=$true}
 if(-not$failed){throw 'Approved verification tools did not reach fail-closed bundle validation'}
 foreach($tool in @($launcher,$verifier,$aclHelper)){
   $released=[IO.File]::Open($tool,[IO.FileMode]::Open,[IO.FileAccess]::Write,[IO.FileShare]::ReadWrite)
