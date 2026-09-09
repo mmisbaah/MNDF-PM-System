@@ -76,6 +76,7 @@ Assert-Match $launcher 'ApprovedApprovalRecordSha256' 'Installer launch must req
 Assert-Match $launcher 'Assert-InstallerApprovalRecord \$approval' 'Installer launch must bind individual release approvals into one record'
 Assert-Match $launcher 'packageCustodians=\$ApprovedPackageCustodians' 'Installer approval record must bind the package custodian ACL trust list'
 Assert-Match $packageAcl 'performance-tracker-install-approval-v1' 'Installer approval records must use a versioned schema'
+Assert-Match $packageAcl 'Approved package custodians must be immutable Windows SID values' 'Installer custody approval must reject reusable account names'
 Assert-Match $launcher 'NodeRuntimeDirectory\)\) ''node\.exe''' 'Installer launch must lock the exact approved runtime executable'
 Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$publicKey\)\) @\(\$publicKey\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved release-key writers'
 Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$node\)\) @\(\$node\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved runtime writers'

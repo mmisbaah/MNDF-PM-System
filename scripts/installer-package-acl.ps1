@@ -19,6 +19,7 @@ function Assert-ProtectedPackageAcl([string]$Directory,[string[]]$Files,[string[
   $approved=@('S-1-5-18','S-1-5-32-544')
   foreach($identity in $Custodians){
     if([string]::IsNullOrWhiteSpace($identity)){throw 'Approved package custodian identities must not be empty'}
+    if($identity-notmatch'^S-1-(?:\d+-)*\d+$'){throw 'Approved package custodians must be immutable Windows SID values'}
     $sid=(Resolve-PackageSid $identity).Value
     if($sid-in$broad){throw 'Broad identities cannot be approved package custodians'}
     $approved+=$sid
@@ -52,8 +53,9 @@ function Assert-InstallerApprovalRecord([object]$Record,[hashtable]$Expected){
   if($Record.format-ne'performance-tracker-install-approval-v1'){throw 'Version 1 installer approval record is required'}
   foreach($name in $Expected.Keys){
     if($name-eq'packageCustodians'){
-      $actualCustodians=@($Record.$name)|ForEach-Object{([string]$_).Trim().ToLowerInvariant()}|Where-Object{$_}|Sort-Object -Unique
-      $approvedCustodians=@($Expected[$name])|ForEach-Object{([string]$_).Trim().ToLowerInvariant()}|Where-Object{$_}|Sort-Object -Unique
+      $actualCustodians=@($Record.$name)|ForEach-Object{([string]$_).Trim().ToUpperInvariant()}|Where-Object{$_}|Sort-Object -Unique
+      $approvedCustodians=@($Expected[$name])|ForEach-Object{([string]$_).Trim().ToUpperInvariant()}|Where-Object{$_}|Sort-Object -Unique
+      foreach($identity in $actualCustodians+$approvedCustodians){if($identity-notmatch'^S-1-(?:\d+-)*\d+$'){throw 'Installer approval record packageCustodians must contain immutable Windows SID values'}}
       if(-not$actualCustodians.Count-or[string]::Join("`n",$actualCustodians)-ne[string]::Join("`n",$approvedCustodians)){throw 'Installer approval record does not match approved packageCustodians'}
       continue
     }
