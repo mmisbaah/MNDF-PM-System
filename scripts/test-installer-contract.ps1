@@ -73,7 +73,9 @@ Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryNa
 Assert-Match $launcher '& \$verifier @verification' 'Installer launch must perform production verification while the bundle is locked'
 Assert-Match $launcher 'Start-Process -FilePath \$installer -Wait -PassThru' 'Only the locked verified installer may be launched'
 if($launcher.IndexOf('& $verifier @verification')-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Installer must be verified before launch'}
-foreach($approval in @('ApprovedLauncherSha256','ApprovedVerifierSha256','ApprovedAclHelperSha256')){Assert-Match $launcher $approval "Installer launcher must require $approval"}
+foreach($approval in @('ApprovedLauncherSha256','ApprovedVerifierSha256','ApprovedAclHelperSha256','ApprovedReleaseSigningHelperSha256')){Assert-Match $launcher $approval "Installer launcher must require $approval"}
+Assert-Match $launcher 'Join-Path \$PSScriptRoot ''release-signing\.mjs''' 'Installer launcher must identify the executed cryptographic helper explicitly'
+Assert-Match $launcher "Name='release-signing helper'" 'Installer launcher must fingerprint and lock the cryptographic helper'
 Assert-Match $launcher 'Get-FileHash -LiteralPath \$tool.Path' 'Installer launcher must fingerprint verification tooling before use'
 Assert-Match $launcher '\$toolStreams.Add\(\[IO.File\]::Open\(.+\[IO.FileShare\]::Read\)\)' 'Installer launcher must deny verification-tool writes before fingerprinting'
 if($launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')-gt$launcher.IndexOf('. $aclHelper')){throw 'Verification tooling must be fingerprinted before helper code is loaded'}

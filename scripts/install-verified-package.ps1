@@ -14,6 +14,7 @@ param(
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedLauncherSha256,
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedVerifierSha256,
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedAclHelperSha256,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleaseSigningHelperSha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
   [Parameter(Mandatory=$true)][string[]]$ApprovedPackageCustodians
@@ -22,10 +23,12 @@ $ErrorActionPreference='Stop'
 $launcher=[IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
 $verifier=Join-Path $PSScriptRoot 'verify-installer-package.ps1'
 $aclHelper=Join-Path $PSScriptRoot 'installer-package-acl.ps1'
+$releaseSigningHelper=Join-Path $PSScriptRoot 'release-signing.mjs'
 $tools=@(
   @{Path=$launcher;Approved=$ApprovedLauncherSha256;Name='installer launcher'},
   @{Path=$verifier;Approved=$ApprovedVerifierSha256;Name='package verifier'},
-  @{Path=$aclHelper;Approved=$ApprovedAclHelperSha256;Name='ACL helper'}
+  @{Path=$aclHelper;Approved=$ApprovedAclHelperSha256;Name='ACL helper'},
+  @{Path=$releaseSigningHelper;Approved=$ApprovedReleaseSigningHelperSha256;Name='release-signing helper'}
 )
 $toolStreams=[Collections.Generic.List[IO.FileStream]]::new()
 try {
