@@ -32,6 +32,8 @@ function Assert-ProtectedPackageAcl([string]$Directory,[string[]]$Files,[string[
   foreach($path in @($Directory)+$Files){
     if(-not(Test-Path -LiteralPath $path)){throw "Installer handoff artifact is missing: $path"}
     $acl=Get-Acl -LiteralPath $path
+    $owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if($owner-notin$approved){throw "Installer handoff artifact has an unapproved owner: $path ($owner)"}
     foreach($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
       if($rule.AccessControlType-eq'Allow'-and($rule.FileSystemRights-band$dangerous)-and$rule.IdentityReference.Value-notin$approved){throw "Installer handoff artifact has an unapproved writer: $path ($($rule.IdentityReference.Value))"}
     }

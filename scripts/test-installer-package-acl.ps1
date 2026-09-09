@@ -16,6 +16,8 @@ try{
   if(-not$failed){throw 'Inherited handoff directory ACL was accepted'}
   Set-ExactProductionAcl -Path $root -ServiceAccount $readOnlySid -Administrators @($currentSid) -ServiceRights ReadAndExecute
   Assert-ProtectedPackageAcl $root $files @($currentSid)
+  $failed=$false;try{Assert-ProtectedPackageAcl $root $files @('S-1-5-18')}catch{$failed=$_.Exception.Message-match'unapproved owner'}
+  if(-not$failed){throw 'Unapproved installer handoff owner was accepted'}
   $initial=@{};foreach($file in $files){$initial[$file]=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
   Assert-UnchangedInstallerBundle $initial
   [IO.File]::AppendAllText($files[1],'changed')

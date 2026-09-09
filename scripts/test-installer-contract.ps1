@@ -61,6 +61,8 @@ Assert-Match $verifier 'record.releaseId-ne\$ApprovedReleaseId' 'Package verifie
 Assert-Match $verifier 'ApprovedPackageCustodians' 'Package verifier must require explicit handoff custodians'
 Assert-Match $packageAcl 'AreAccessRulesProtected' 'Package verifier must require protected handoff ACL inheritance'
 Assert-Match $packageAcl 'Installer handoff artifact has an unapproved writer' 'Package verifier must reject unapproved bundle writers'
+Assert-Match $packageAcl 'GetOwner\(\[Security.Principal.SecurityIdentifier\]\)' 'Package verifier must inspect security-path ownership by SID'
+Assert-Match $packageAcl 'Installer handoff artifact has an unapproved owner' 'Package verifier must reject an owner able to rewrite protected ACLs'
 Assert-Match $verifier 'Assert-ProtectedPackageAcl \$artifactDirectory' 'Package verifier must inspect the installer and signed evidence bundle'
 Assert-Match $packageAcl 'Assert-UnchangedInstallerBundle' 'Package verifier must provide a complete bundle stability check'
 Assert-Match $verifier 'Assert-UnchangedInstallerBundle \$bundleInitialHashes' 'Package verifier must reject artifacts changed while verification runs'
