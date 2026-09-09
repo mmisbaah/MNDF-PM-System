@@ -12,11 +12,14 @@ try{
   $junction=Join-Path $root 'redirected';New-Item -ItemType Junction -Path $junction -Target $junctionTarget|Out-Null
   $failed=$false;try{Assert-NonRedirectedInstallerPath (Join-Path $junction 'payload.exe')}catch{$failed=$_.Exception.Message-match'reparse point'}
   if(-not$failed){throw 'Junction-based installer path was accepted'}
-  $approval=[pscustomobject]@{format='performance-tracker-install-approval-v1';version='1.2.3';releaseId='release-1'}
-  Assert-InstallerApprovalRecord $approval @{version='1.2.3';releaseId='release-1'}
+  $approval=[pscustomobject]@{format='performance-tracker-install-approval-v1';version='1.2.3';releaseId='release-1';packageCustodians=@('S-1-5-18','BUILTIN\Administrators')}
+  Assert-InstallerApprovalRecord $approval @{version='1.2.3';releaseId='release-1';packageCustodians=@('builtin\administrators','s-1-5-18')}
   $approval.version='9.9.9'
   $failed=$false;try{Assert-InstallerApprovalRecord $approval @{version='1.2.3';releaseId='release-1'}}catch{$failed=$_.Exception.Message-match'approved version'}
   if(-not$failed){throw 'Mismatched installer approval record was accepted'}
+  $approval.version='1.2.3';$approval.packageCustodians=@('S-1-5-18','BUILTIN\Administrators','Unapproved Operator')
+  $failed=$false;try{Assert-InstallerApprovalRecord $approval @{version='1.2.3';releaseId='release-1';packageCustodians=@('S-1-5-18','BUILTIN\Administrators')}}catch{$failed=$_.Exception.Message-match'approved packageCustodians'}
+  if(-not$failed){throw 'Installer approval record accepted a widened package custodian set'}
   $failed=$false;try{Assert-ProtectedPackageAcl $root $files @($currentSid)}catch{$failed=$_.Exception.Message-match'protected ACL inheritance'}
   if(-not$failed){throw 'Inherited handoff directory ACL was accepted'}
   Set-ExactProductionAcl -Path $root -ServiceAccount $readOnlySid -Administrators @($currentSid) -ServiceRights ReadAndExecute

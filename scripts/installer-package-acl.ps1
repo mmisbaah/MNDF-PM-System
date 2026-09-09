@@ -51,6 +51,12 @@ function Assert-UnchangedInstallerBundle([hashtable]$InitialHashes){
 function Assert-InstallerApprovalRecord([object]$Record,[hashtable]$Expected){
   if($Record.format-ne'performance-tracker-install-approval-v1'){throw 'Version 1 installer approval record is required'}
   foreach($name in $Expected.Keys){
+    if($name-eq'packageCustodians'){
+      $actualCustodians=@($Record.$name)|ForEach-Object{([string]$_).Trim().ToLowerInvariant()}|Where-Object{$_}|Sort-Object -Unique
+      $approvedCustodians=@($Expected[$name])|ForEach-Object{([string]$_).Trim().ToLowerInvariant()}|Where-Object{$_}|Sort-Object -Unique
+      if(-not$actualCustodians.Count-or[string]::Join("`n",$actualCustodians)-ne[string]::Join("`n",$approvedCustodians)){throw 'Installer approval record does not match approved packageCustodians'}
+      continue
+    }
     $actual=[string]$Record.$name
     $approved=[string]$Expected[$name]
     if([string]::IsNullOrWhiteSpace($actual)-or-not[string]::Equals($actual,$approved,[StringComparison]::OrdinalIgnoreCase)){throw "Installer approval record does not match approved $name"}

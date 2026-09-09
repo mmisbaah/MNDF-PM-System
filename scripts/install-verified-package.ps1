@@ -78,6 +78,7 @@ try {
       releasePublicKeySha256=$ApprovedReleasePublicKeySha256;nodeRuntimeSha256=$ApprovedNodeRuntimeSha256
       launcherSha256=$ApprovedLauncherSha256;verifierSha256=$ApprovedVerifierSha256;aclHelperSha256=$ApprovedAclHelperSha256
       releaseSigningHelperSha256=$ApprovedReleaseSigningHelperSha256
+      packageCustodians=$ApprovedPackageCustodians
     }
     & $verifier @verification
     $process=Start-Process -FilePath $installer -Wait -PassThru

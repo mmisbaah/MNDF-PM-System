@@ -74,6 +74,7 @@ Assert-Match $launcher 'Approved verification-tool path contains a reparse point
 Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature,\$publicKey,\$node,\$approvalRecord\)' 'Installer launch must lock the signed handoff bundle, approval record and external trust inputs'
 Assert-Match $launcher 'ApprovedApprovalRecordSha256' 'Installer launch must require an independently approved approval-record fingerprint'
 Assert-Match $launcher 'Assert-InstallerApprovalRecord \$approval' 'Installer launch must bind individual release approvals into one record'
+Assert-Match $launcher 'packageCustodians=\$ApprovedPackageCustodians' 'Installer approval record must bind the package custodian ACL trust list'
 Assert-Match $packageAcl 'performance-tracker-install-approval-v1' 'Installer approval records must use a versioned schema'
 Assert-Match $launcher 'NodeRuntimeDirectory\)\) ''node\.exe''' 'Installer launch must lock the exact approved runtime executable'
 Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$publicKey\)\) @\(\$publicKey\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved release-key writers'
