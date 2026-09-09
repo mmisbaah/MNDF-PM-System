@@ -34,6 +34,13 @@ $toolStreams=[Collections.Generic.List[IO.FileStream]]::new()
 try {
   foreach($tool in $tools){
     if(-not(Test-Path -LiteralPath $tool.Path -PathType Leaf)){throw "Approved $($tool.Name) was not found"}
+    $current=Get-Item -LiteralPath $tool.Path -Force
+    while($current){
+      if(($current.Attributes-band[IO.FileAttributes]::ReparsePoint)-ne0){throw "Approved verification-tool path contains a reparse point: $($current.FullName)"}
+      $parent=[IO.Path]::GetDirectoryName($current.FullName)
+      if([string]::IsNullOrWhiteSpace($parent)-or$parent-eq$current.FullName){break}
+      $current=Get-Item -LiteralPath $parent -Force
+    }
     $toolStreams.Add([IO.File]::Open($tool.Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read))
   }
   foreach($tool in $tools){

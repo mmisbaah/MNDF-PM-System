@@ -3,6 +3,16 @@ function Resolve-PackageSid([string]$Identity){
   return ([Security.Principal.NTAccount]::new($Identity)).Translate([Security.Principal.SecurityIdentifier])
 }
 
+function Assert-NonRedirectedInstallerPath([string]$Path){
+  $current=Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+  while($current){
+    if(($current.Attributes-band[IO.FileAttributes]::ReparsePoint)-ne0){throw "Installer security path contains a reparse point: $($current.FullName)"}
+    $parent=[IO.Path]::GetDirectoryName($current.FullName)
+    if([string]::IsNullOrWhiteSpace($parent)-or$parent-eq$current.FullName){break}
+    $current=Get-Item -LiteralPath $parent -Force -ErrorAction Stop
+  }
+}
+
 function Assert-ProtectedPackageAcl([string]$Directory,[string[]]$Files,[string[]]$Custodians){
   if(-not$Custodians.Count){throw 'An explicit approved package custodian list is required'}
   $broad=@('S-1-1-0','S-1-5-11','S-1-5-32-545')
@@ -14,6 +24,8 @@ function Assert-ProtectedPackageAcl([string]$Directory,[string[]]$Files,[string[
     $approved+=$sid
   }
   $approved=@($approved|Select-Object -Unique)
+  Assert-NonRedirectedInstallerPath $Directory
+  foreach($path in $Files){Assert-NonRedirectedInstallerPath $path}
   $directoryAcl=Get-Acl -LiteralPath $Directory
   if(-not$directoryAcl.AreAccessRulesProtected){throw 'Installer handoff directory must have protected ACL inheritance'}
   $dangerous=[Security.AccessControl.FileSystemRights]::WriteData-bor[Security.AccessControl.FileSystemRights]::CreateFiles-bor[Security.AccessControl.FileSystemRights]::AppendData-bor[Security.AccessControl.FileSystemRights]::Delete-bor[Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles-bor[Security.AccessControl.FileSystemRights]::ChangePermissions-bor[Security.AccessControl.FileSystemRights]::TakeOwnership
@@ -40,6 +52,7 @@ function Invoke-WithLockedInstallerBundle([string[]]$Paths,[scriptblock]$Action)
   try {
     foreach($path in $Paths){
       if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Installer handoff artifact is missing: $path"}
+      Assert-NonRedirectedInstallerPath $path
       $streams.Add([IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read))
     }
     & $Action

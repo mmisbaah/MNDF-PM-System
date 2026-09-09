@@ -66,6 +66,9 @@ Assert-Match $packageAcl 'Assert-UnchangedInstallerBundle' 'Package verifier mus
 Assert-Match $verifier 'Assert-UnchangedInstallerBundle \$bundleInitialHashes' 'Package verifier must reject artifacts changed while verification runs'
 if($verifier.LastIndexOf('Assert-UnchangedInstallerBundle $bundleInitialHashes')-lt$verifier.IndexOf("& $node (Join-Path $PSScriptRoot 'release-signing.mjs') verify")){throw 'Bundle stability must be checked after cryptographic verification'}
 Assert-Match $packageAcl 'FileShare\]::Read' 'Installer bundle lock must deny concurrent writes and replacement'
+Assert-Match $packageAcl 'Assert-NonRedirectedInstallerPath' 'Installer package and trust paths must reject filesystem redirection'
+Assert-Match $packageAcl 'FileAttributes\]::ReparsePoint' 'Installer path validation must detect junctions and symbolic links'
+Assert-Match $launcher 'Approved verification-tool path contains a reparse point' 'Installer verification tools must reject redirected paths before locking'
 Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature,\$publicKey,\$node\)' 'Installer launch must lock the signed handoff bundle and external trust inputs'
 Assert-Match $launcher 'NodeRuntimeDirectory\)\) ''node\.exe''' 'Installer launch must lock the exact approved runtime executable'
 Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$publicKey\)\) @\(\$publicKey\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved release-key writers'

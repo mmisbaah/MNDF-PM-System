@@ -7,6 +7,11 @@ $files=@('setup.exe','setup.exe.build.json','setup.exe.build.json.sig.json')|For
 $currentSid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $readOnlySid='S-1-5-19'
 try{
+  $junctionTarget=Join-Path $root 'junction-target';New-Item -ItemType Directory -Path $junctionTarget|Out-Null
+  $junctionPayload=Join-Path $junctionTarget 'payload.exe';[IO.File]::WriteAllText($junctionPayload,'test')
+  $junction=Join-Path $root 'redirected';New-Item -ItemType Junction -Path $junction -Target $junctionTarget|Out-Null
+  $failed=$false;try{Assert-NonRedirectedInstallerPath (Join-Path $junction 'payload.exe')}catch{$failed=$_.Exception.Message-match'reparse point'}
+  if(-not$failed){throw 'Junction-based installer path was accepted'}
   $failed=$false;try{Assert-ProtectedPackageAcl $root $files @($currentSid)}catch{$failed=$_.Exception.Message-match'protected ACL inheritance'}
   if(-not$failed){throw 'Inherited handoff directory ACL was accepted'}
   Set-ExactProductionAcl -Path $root -ServiceAccount $readOnlySid -Administrators @($currentSid) -ServiceRights ReadAndExecute

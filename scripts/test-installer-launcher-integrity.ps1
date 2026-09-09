@@ -1,8 +1,12 @@
 $ErrorActionPreference='Stop'
-$launcher=Join-Path $PSScriptRoot 'install-verified-package.ps1'
-$verifier=Join-Path $PSScriptRoot 'verify-installer-package.ps1'
-$aclHelper=Join-Path $PSScriptRoot 'installer-package-acl.ps1'
-$releaseSigningHelper=Join-Path $PSScriptRoot 'release-signing.mjs'
+$testRoot=Join-Path ([IO.Path]::GetTempPath()) ('pt-installer-launcher-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $testRoot|Out-Null
+foreach($name in @('install-verified-package.ps1','verify-installer-package.ps1','installer-package-acl.ps1','release-signing.mjs')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $testRoot}
+$launcher=Join-Path $testRoot 'install-verified-package.ps1'
+$verifier=Join-Path $testRoot 'verify-installer-package.ps1'
+$aclHelper=Join-Path $testRoot 'installer-package-acl.ps1'
+$releaseSigningHelper=Join-Path $testRoot 'release-signing.mjs'
+try{
 $launcherHash=(Get-FileHash -LiteralPath $launcher -Algorithm SHA256).Hash
 $verifierHash=(Get-FileHash -LiteralPath $verifier -Algorithm SHA256).Hash
 $helperHash=(Get-FileHash -LiteralPath $aclHelper -Algorithm SHA256).Hash
@@ -28,3 +32,4 @@ foreach($tool in @($launcher,$verifier,$aclHelper,$releaseSigningHelper)){
   $released.Dispose()
 }
 Write-Output 'Installer launcher integrity tests passed.'
+}finally{Remove-Item -LiteralPath $testRoot -Recurse -Force}
