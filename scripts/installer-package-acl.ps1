@@ -48,6 +48,15 @@ function Assert-UnchangedInstallerBundle([hashtable]$InitialHashes){
   }
 }
 
+function Assert-InstallerApprovalRecord([object]$Record,[hashtable]$Expected){
+  if($Record.format-ne'performance-tracker-install-approval-v1'){throw 'Version 1 installer approval record is required'}
+  foreach($name in $Expected.Keys){
+    $actual=[string]$Record.$name
+    $approved=[string]$Expected[$name]
+    if([string]::IsNullOrWhiteSpace($actual)-or-not[string]::Equals($actual,$approved,[StringComparison]::OrdinalIgnoreCase)){throw "Installer approval record does not match approved $name"}
+  }
+}
+
 function Invoke-WithLockedInstallerBundle([string[]]$Paths,[scriptblock]$Action){
   if(-not$Paths.Count){throw 'Installer bundle paths are required'}
   $streams=[Collections.Generic.List[IO.FileStream]]::new()

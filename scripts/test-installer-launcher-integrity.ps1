@@ -11,11 +11,14 @@ $launcherHash=(Get-FileHash -LiteralPath $launcher -Algorithm SHA256).Hash
 $verifierHash=(Get-FileHash -LiteralPath $verifier -Algorithm SHA256).Hash
 $helperHash=(Get-FileHash -LiteralPath $aclHelper -Algorithm SHA256).Hash
 $signingHelperHash=(Get-FileHash -LiteralPath $releaseSigningHelper -Algorithm SHA256).Hash
+$approvalRecord=Join-Path $testRoot 'install-approval.json';[IO.File]::WriteAllText($approvalRecord,'{}')
+$approvalRecordHash=(Get-FileHash -LiteralPath $approvalRecord -Algorithm SHA256).Hash
 $common=@{
   InstallerPath='missing.exe';BuildRecordPath='missing.json';ReleasePublicKey='missing.pem';NodeRuntimeDirectory='missing-runtime'
   ApprovedInstallerSha256=('1'*64);ApprovedSigningCertificateThumbprint=('2'*40);ApprovedTimestampCertificateThumbprint=('3'*40)
   ApprovedAppVersion='1.0.0';ApprovedReleaseCommit=('4'*40);ApprovedReleaseId='release-1';ApprovedSignToolSha256=('5'*64)
   ApprovedReleasePublicKeySha256=('6'*64);ApprovedPackageCustodians=@('S-1-5-18')
+  ApprovalRecordPath=$approvalRecord;ApprovedApprovalRecordSha256=$approvalRecordHash
 }
 $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 ('0'*64) -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 $helperHash -ApprovedReleaseSigningHelperSha256 $signingHelperHash}catch{$failed=$_.Exception.Message-match'launcher fingerprint'}
 if(-not$failed){throw 'Installer launcher accepted an unapproved self fingerprint'}
