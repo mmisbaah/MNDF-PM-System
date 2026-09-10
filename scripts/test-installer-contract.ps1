@@ -5,6 +5,7 @@ $builder=Get-Content -LiteralPath (Join-Path $project 'installer\build-installer
 $verifier=Get-Content -LiteralPath (Join-Path $project 'scripts\verify-installer-package.ps1') -Raw
 $launcher=Get-Content -LiteralPath (Join-Path $project 'scripts\install-verified-package.ps1') -Raw
 $packageAcl=Get-Content -LiteralPath (Join-Path $project 'scripts\installer-package-acl.ps1') -Raw
+$approvalGenerator=Get-Content -LiteralPath (Join-Path $project 'scripts\new-installer-approval.ps1') -Raw
 $completion=Get-Content -LiteralPath (Join-Path $project 'installer\assets\complete-installation.ps1') -Raw
 $removal=Get-Content -LiteralPath (Join-Path $project 'installer\assets\remove-installation.ps1') -Raw
 function Assert-Match([string]$Value,[string]$Pattern,[string]$Message){if($Value-notmatch$Pattern){throw $Message}}
@@ -77,6 +78,10 @@ Assert-Match $launcher 'Assert-InstallerApprovalRecord \$approval' 'Installer la
 Assert-Match $launcher 'packageCustodians=\$ApprovedPackageCustodians' 'Installer approval record must bind the package custodian ACL trust list'
 Assert-Match $packageAcl 'performance-tracker-install-approval-v1' 'Installer approval records must use a versioned schema'
 Assert-Match $packageAcl 'Approved package custodians must be immutable Windows SID values' 'Installer custody approval must reject reusable account names'
+Assert-Match $packageAcl 'schema is incomplete or contains unknown fields' 'Installer approval must use an exact versioned schema'
+Assert-Match $packageAcl 'exceeds 14 days' 'Installer approval must have a bounded validity window'
+Assert-Match $approvalGenerator '\[IO.FileMode\]::CreateNew' 'Installer approval ceremony must never overwrite an existing record'
+Assert-Match $approvalGenerator '\[ValidateRange\(1,14\)\]' 'Installer approval generator must cap validity at 14 days'
 Assert-Match $launcher 'NodeRuntimeDirectory\)\) ''node\.exe''' 'Installer launch must lock the exact approved runtime executable'
 Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$publicKey\)\) @\(\$publicKey\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved release-key writers'
 Assert-Match $launcher 'Assert-ProtectedPackageAcl \(\[IO.Path\]::GetDirectoryName\(\$node\)\) @\(\$node\) \$ApprovedPackageCustodians' 'Installer launch must reject unapproved runtime writers'

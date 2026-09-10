@@ -51,6 +51,13 @@ function Assert-UnchangedInstallerBundle([hashtable]$InitialHashes){
 
 function Assert-InstallerApprovalRecord([object]$Record,[hashtable]$Expected){
   if($Record.format-ne'performance-tracker-install-approval-v1'){throw 'Version 1 installer approval record is required'}
+  $required=@('format','approvedBySid','approvedAtUtc','expiresAtUtc','installerSha256','signingCertificateThumbprint','timestampCertificateThumbprint','version','releaseCommit','releaseId','compilerSha256','signToolSha256','releasePublicKeySha256','nodeRuntimeSha256','launcherSha256','verifierSha256','aclHelperSha256','releaseSigningHelperSha256','packageCustodians')
+  $properties=@($Record.PSObject.Properties.Name)
+  if(@(Compare-Object $required $properties).Count){throw 'Installer approval record schema is incomplete or contains unknown fields'}
+  if(([string]$Record.approvedBySid)-notmatch'^S-1-(?:\d+-)*\d+$'){throw 'Installer approval must identify the Authorizer by immutable Windows SID'}
+  try{$approvedAt=[DateTimeOffset]::ParseExact([string]$Record.approvedAtUtc,'o',[Globalization.CultureInfo]::InvariantCulture);$expiresAt=[DateTimeOffset]::ParseExact([string]$Record.expiresAtUtc,'o',[Globalization.CultureInfo]::InvariantCulture)}catch{throw 'Installer approval timestamps must use round-trip UTC format'}
+  $now=[DateTimeOffset]::UtcNow
+  if($approvedAt.Offset-ne[TimeSpan]::Zero-or$expiresAt.Offset-ne[TimeSpan]::Zero-or$approvedAt-gt$now.AddMinutes(5)-or$expiresAt-le$now-or$expiresAt-le$approvedAt-or$expiresAt-gt$approvedAt.AddDays(14)){throw 'Installer approval is expired, future-dated, or exceeds 14 days'}
   foreach($name in $Expected.Keys){
     if($name-eq'packageCustodians'){
       $actualCustodians=@($Record.$name)|ForEach-Object{([string]$_).Trim().ToUpperInvariant()}|Where-Object{$_}|Sort-Object -Unique

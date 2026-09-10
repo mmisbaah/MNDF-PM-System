@@ -12,7 +12,8 @@ try{
   $junction=Join-Path $root 'redirected';New-Item -ItemType Junction -Path $junction -Target $junctionTarget|Out-Null
   $failed=$false;try{Assert-NonRedirectedInstallerPath (Join-Path $junction 'payload.exe')}catch{$failed=$_.Exception.Message-match'reparse point'}
   if(-not$failed){throw 'Junction-based installer path was accepted'}
-  $approval=[pscustomobject]@{format='performance-tracker-install-approval-v1';version='1.2.3';releaseId='release-1';packageCustodians=@('S-1-5-18','S-1-5-32-544')}
+  $approvedAt=[DateTimeOffset]::UtcNow
+  $approval=[pscustomobject][ordered]@{format='performance-tracker-install-approval-v1';approvedBySid='S-1-5-21-1';approvedAtUtc=$approvedAt.ToString('o');expiresAtUtc=$approvedAt.AddDays(7).ToString('o');installerSha256=('a'*64);signingCertificateThumbprint=('b'*40);timestampCertificateThumbprint=('c'*40);version='1.2.3';releaseCommit=('d'*40);releaseId='release-1';compilerSha256=('e'*64);signToolSha256=('f'*64);releasePublicKeySha256=('1'*64);nodeRuntimeSha256=('2'*64);launcherSha256=('3'*64);verifierSha256=('4'*64);aclHelperSha256=('5'*64);releaseSigningHelperSha256=('6'*64);packageCustodians=@('S-1-5-18','S-1-5-32-544')}
   Assert-InstallerApprovalRecord $approval @{version='1.2.3';releaseId='release-1';packageCustodians=@('s-1-5-32-544','s-1-5-18')}
   $approval.version='9.9.9'
   $failed=$false;try{Assert-InstallerApprovalRecord $approval @{version='1.2.3';releaseId='release-1'}}catch{$failed=$_.Exception.Message-match'approved version'}
