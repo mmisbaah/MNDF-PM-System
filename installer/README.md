@@ -20,6 +20,8 @@ Production compilation requires:
 
 `build-installer.ps1 -AllowUnsignedRehearsal` exists only for disposable installation testing. Its output is not authorized for production distribution.
 
+Run an unsigned package on an elevated, disposable Windows staging host with `scripts/run-installer-rehearsal.ps1`. The runner refuses the production installation root and any pre-existing target, independently checks the installer and release-key fingerprints, installs silently, verifies the installed signed manifest and full payload, exercises uninstall, and writes a versioned JSON evidence record. It confirms that protected configuration/data roots and immutable releases remain for an explicit custody decision while replaceable runtime helpers are removed. The rehearsal deliberately does not connect to a production database or authorize the unsigned package for deployment.
+
 Change the application version only through a reviewed source commit. The builder rejects a free-form `-AppVersion` value that does not exactly match the package metadata covered by the release integrity manifest.
 
 The default `TrustedCompilerSha256` pins the reviewed Inno Setup 6.7.3 compiler. A compiler upgrade requires a separately reviewed source change to that fingerprint; do not override it merely to make an unfamiliar binary pass. The installer build record includes the verified compiler hash and publisher subject.

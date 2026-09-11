@@ -1,0 +1,21 @@
+$ErrorActionPreference='Stop'
+$project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
+$runner=Get-Content -LiteralPath (Join-Path $project 'scripts\run-installer-rehearsal.ps1') -Raw
+function Assert-Match([string]$Pattern,[string]$Message){if($runner-notmatch$Pattern){throw $Message}}
+Assert-Match 'ConfirmDisposableHost' 'Rehearsal must require explicit disposable-host acknowledgement'
+Assert-Match 'IsInRole\(\[Security\.Principal\.WindowsBuiltInRole\]::Administrator\)' 'Rehearsal must require an elevated operator'
+Assert-Match "productionAuthorized-ne\`$false" 'Rehearsal must reject production-authorized records'
+Assert-Match "authenticodeStatus-ne'NotSigned'" 'Rehearsal must require an explicitly unsigned artifact'
+Assert-Match 'RehearsalRoot must not be the production installation path' 'Rehearsal must reject the production root'
+Assert-Match 'RehearsalRoot must not already exist' 'Rehearsal must not merge into an existing installation'
+Assert-Match "Get-Sha256 \`$installer\)-ne\`$record.sha256" 'Rehearsal must verify installer provenance before launch'
+Assert-Match "Get-Sha256 \`$publicKey\)-ne\`$record.releasePublicKeySha256" 'Rehearsal must verify the trust key before launch'
+Assert-Match "release-signing\.mjs'\) verify" 'Installed release signature must be verified'
+Assert-Match "release-integrity\.mjs'\) verify" 'Installed payload integrity must be verified'
+Assert-Match 'unins000\.exe' 'Rehearsal must exercise uninstall'
+Assert-Match 'rehearsal-retention\.txt' 'Rehearsal must exercise retention with actual protected-data files'
+Assert-Match 'Uninstall removed protected retained data' 'Rehearsal must verify protected retention'
+Assert-Match 'Uninstall retained replaceable runtime files' 'Rehearsal must reject replaceable runtime leftovers'
+Assert-Match 'performance-tracker-installer-rehearsal-v1' 'Rehearsal must emit versioned evidence'
+Assert-Match 'operatorSid' 'Rehearsal evidence must identify the immutable operator SID'
+Write-Output 'PASS installer lifecycle rehearsal contract'
