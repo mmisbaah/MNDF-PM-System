@@ -10,9 +10,12 @@ param(
   [Parameter(Mandatory=$true)][string]$ReleasePublicKey,
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedPublicKeySha256,
   [Parameter(Mandatory=$true)][string]$EvidenceDirectory,
+  [Parameter(Mandatory=$true)][string]$RehearsalPlanPath,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedRehearsalPlanSha256,
   [switch]$ConfirmDisposableHost
 )
 $ErrorActionPreference='Stop'
+function Get-Sha256([string]$Path){(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()}
 
 if(-not$ConfirmDisposableHost){throw 'Use -ConfirmDisposableHost only on an approved disposable Windows staging host'}
 $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -34,6 +37,30 @@ if(@(@($baseline,$candidate,$failure)|Sort-Object -Unique).Count-ne3){throw 'Bas
 foreach($release in @($baseline,$candidate,$failure)){
   if(-not$release.StartsWith("$root\",[StringComparison]::OrdinalIgnoreCase)){throw 'Every rehearsal release must be a child of ReleasesRoot'}
   if(-not(Test-Path -LiteralPath $release -PathType Container)){throw "Rehearsal release was not found: $release"}
+}
+$planPath=[IO.Path]::GetFullPath($RehearsalPlanPath)
+if(-not(Test-Path -LiteralPath $planPath -PathType Leaf)){throw 'Approved rehearsal plan was not found'}
+if((Get-Sha256 $planPath)-ne$ApprovedRehearsalPlanSha256.ToLowerInvariant()){throw 'Rehearsal plan fingerprint does not match independent approval'}
+$plan=Get-Content -LiteralPath $planPath -Raw|ConvertFrom-Json
+$expectedPlanFields=@('format','host','authorizerSid','approvedAt','expiresAt','releasesRoot','releasePublicKeySha256','releases')
+$actualPlanFields=@($plan.PSObject.Properties.Name|Sort-Object)-join','
+if($actualPlanFields-ne(@($expectedPlanFields|Sort-Object)-join',')){throw 'Rehearsal plan schema is incomplete or contains unknown fields'}
+if($plan.format-ne'performance-tracker-promotion-rehearsal-plan-v1'){throw 'Unsupported rehearsal plan format'}
+if($plan.host-ne[Environment]::MachineName){throw 'Rehearsal plan belongs to a different host'}
+if($plan.authorizerSid-notmatch'^S-1-'){throw 'Rehearsal plan must identify its authorizer by immutable SID'}
+$approved=[datetime]$plan.approvedAt;$expires=[datetime]$plan.expiresAt;$now=(Get-Date).ToUniversalTime()
+if($approved.Kind-ne[DateTimeKind]::Utc-or$expires.Kind-ne[DateTimeKind]::Utc-or$approved-gt$now.AddMinutes(5)-or$expires-le$now-or($expires-$approved).TotalDays-gt14){throw 'Rehearsal plan approval period is invalid or expired'}
+if([IO.Path]::GetFullPath([string]$plan.releasesRoot).TrimEnd('\')-ne$root){throw 'Rehearsal plan ReleasesRoot does not match'}
+if((Get-Sha256 $ReleasePublicKey)-ne$plan.releasePublicKeySha256){throw 'Rehearsal trust key differs from the approved plan'}
+$planned=@{baseline=$baseline;candidate=$candidate;failure=$failure}
+foreach($role in $planned.Keys){
+  $entry=$plan.releases.$role
+  if($null-eq$entry-or[IO.Path]::GetFullPath([string]$entry.directory).TrimEnd('\')-ne$planned[$role]){throw "$role release differs from the approved plan"}
+  $expectedReleaseFields=@('directory','commit','manifestSha256','signatureSha256')
+  if((@($entry.PSObject.Properties.Name|Sort-Object)-join',')-ne(@($expectedReleaseFields|Sort-Object)-join',')){throw "$role release plan schema is invalid"}
+  if($entry.commit-notmatch'^[0-9a-f]{40}$'-or$entry.manifestSha256-notmatch'^[0-9a-f]{64}$'-or$entry.signatureSha256-notmatch'^[0-9a-f]{64}$'){throw "$role release plan fingerprints are invalid"}
+  $manifest=Join-Path $planned[$role] '.next\standalone\release-manifest.json';$signature="$manifest.sig.json"
+  if((Get-Sha256 $manifest)-ne$entry.manifestSha256-or(Get-Sha256 $signature)-ne$entry.signatureSha256){throw "$role release evidence changed after plan approval"}
 }
 $health=[Uri]$HealthUrl
 if($health.Scheme-ne'http'-or$health.Host-notin@('127.0.0.1','localhost','::1')){throw 'HealthUrl must use loopback HTTP'}
