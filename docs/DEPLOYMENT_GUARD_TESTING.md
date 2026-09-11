@@ -26,3 +26,5 @@ rehearse promotion and failed-health rollback on a disposable Windows host with
 the actual service account. Also test an occupied port and denied task-stop
 permission, confirming the current junction remains unchanged. Record evidence
 before marking production deployment verified.
+
+Use `scripts/run-promotion-rollback-rehearsal.ps1` for the attended lifecycle test. Supply three distinct integrity-signed staging releases: a healthy baseline, the healthy candidate under review, and a valid package deliberately configured to fail its health check. The runner refuses production paths, initializes and verifies the baseline, promotes the candidate through `promote-release.ps1`, requires the third promotion to fail, confirms that `CurrentLink` returned to the healthy candidate, and requires a terminal `ROLLED_BACK` journal record. It writes a separate versioned JSON evidence record outside the mutable release links.
