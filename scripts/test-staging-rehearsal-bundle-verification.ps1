@@ -1,0 +1,20 @@
+$ErrorActionPreference='Stop'
+$project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
+$verifier=Get-Content -LiteralPath (Join-Path $project 'scripts\verify-staging-rehearsal-bundle.ps1') -Raw
+function Assert-Match([string]$Pattern,[string]$Message){if($verifier-notmatch$Pattern){throw $Message}}
+Assert-Match 'ApprovedBundleManifestSha256' 'Verifier must require an independently approved manifest digest'
+Assert-Match 'ApprovedVerifierSha256' 'Verifier must require its own independently approved digest'
+Assert-Match 'ApprovedNodeSha256' 'Verifier must require an independently approved Node digest'
+Assert-Match 'ApprovedSigningHelperSha256' 'Verifier must require an independently approved signing-helper digest'
+Assert-Match 'ApprovedIntegrityHelperSha256' 'Verifier must require an independently approved integrity-helper digest'
+Assert-Match 'O=OpenJS Foundation' 'Verifier must authenticate the external Node publisher'
+Assert-Match 'schema is incomplete or contains unknown fields' 'Verifier must reject schema ambiguity'
+Assert-Match 'unsafe path' 'Verifier must reject unsafe inventory paths'
+Assert-Match 'junction or symbolic link' 'Verifier must reject redirected bundle paths'
+Assert-Match 'FileShare\]::Read' 'Verifier must deny concurrent bundle writes'
+Assert-Match 'file set differs from the approved inventory' 'Verifier must reject added or missing files'
+Assert-Match '& \$node \$signingHelper verify' 'Verifier must recheck release signatures independently'
+Assert-Match '& \$node \$integrityHelper verify' 'Verifier must recheck full release inventories independently'
+Assert-Match 'Failure release is not marked rehearsal-only' 'Verifier must require a marked failure release'
+Assert-Match 'release cannot be marked rehearsal-only' 'Verifier must reject marked healthy releases'
+Write-Output 'PASS staging rehearsal bundle verification contract'
