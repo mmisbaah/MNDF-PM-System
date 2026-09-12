@@ -1,0 +1,23 @@
+$ErrorActionPreference='Stop'
+$project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
+$script=Get-Content -LiteralPath (Join-Path $project 'scripts\new-rehearsal-acceptance.ps1') -Raw
+function Assert-Match([string]$Pattern,[string]$Message){if($script-notmatch$Pattern){throw $Message}}
+Assert-Match 'ApprovedEvidenceManifestSha256' 'Acceptance must bind an independently approved evidence fingerprint'
+Assert-Match 'ApprovedInstallerApprovalSha256' 'Acceptance must bind an independently approved installer approval fingerprint'
+Assert-Match '\$signingHelper verify \$manifestPath \$signaturePath \$evidenceKey' 'Acceptance must verify the evidence signature'
+Assert-Match "manifest\.format-ne'performance-tracker-rehearsal-evidence-final-v1'" 'Acceptance must require the final evidence format'
+Assert-Match "manifest\.status-ne'PASS'" 'Acceptance must require passed evidence'
+Assert-Match "path-eq'seal/cleanup-result\.json'" 'Acceptance must locate sealed cleanup evidence'
+Assert-Match 'Cleanup result changed after evidence sealing' 'Acceptance must verify cleanup integrity'
+Assert-Match "cleanup\.status-ne'PASS'" 'Acceptance must require passed cleanup'
+Assert-Match 'Rehearsal operator SID does not match cleanup evidence' 'Acceptance must bind the operator identity'
+Assert-Match 'operator and release authorizer must be different accounts' 'Acceptance must enforce two-person approval'
+Assert-Match 'signed-in Windows account must match AuthorizerSid' 'Acceptance must bind the interactive authorizer'
+Assert-Match 'Installer approval has expired' 'Acceptance must reject expired installer approval'
+Assert-Match 'AUTHORIZE GO' 'GO decisions must require an exact ceremony phrase'
+Assert-Match 'AUTHORIZE NO_GO' 'NO_GO decisions must require an exact ceremony phrase'
+Assert-Match "format='performance-tracker-rehearsal-acceptance-v1'" 'Acceptance must emit a versioned schema'
+Assert-Match '\$signingHelper sign \$output \$privateKey \$outputSignature' 'Acceptance record must be signed'
+Assert-Match '\$signingHelper verify \$output \$outputSignature \$publicKey' 'Acceptance signature must be verified'
+Assert-Match '\[IO\.FileMode\]::CreateNew' 'Acceptance must not overwrite an existing decision'
+Write-Output 'PASS rehearsal acceptance contract'
