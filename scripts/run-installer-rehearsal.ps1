@@ -82,7 +82,7 @@ try {
   if((Get-Sha256 $node)-ne$record.nodeRuntimeSha256){throw 'Installed Node.js runtime fingerprint changed'}
   if((Get-Sha256 $installedKey)-ne$record.releasePublicKeySha256){throw 'Installed release public key fingerprint changed'}
   $manifest=Join-Path $release '.next\standalone\release-manifest.json'
-  $signature="$manifest.sig.json"
+  $signature=Join-Path (Split-Path $manifest -Parent) 'release-manifest.sig.json'
   & $node (Join-Path $release 'scripts\release-signing.mjs') verify $manifest $signature $installedKey
   if($LASTEXITCODE-ne0){throw 'Installed release signature verification failed'}
   & $node (Join-Path $release 'scripts\release-integrity.mjs') verify (Join-Path $release '.next\standalone') (Join-Path $release 'scripts')

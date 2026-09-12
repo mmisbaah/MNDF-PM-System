@@ -56,10 +56,13 @@ $planned=@{baseline=$baseline;candidate=$candidate;failure=$failure}
 foreach($role in $planned.Keys){
   $entry=$plan.releases.$role
   if($null-eq$entry-or[IO.Path]::GetFullPath([string]$entry.directory).TrimEnd('\')-ne$planned[$role]){throw "$role release differs from the approved plan"}
-  $expectedReleaseFields=@('directory','commit','manifestSha256','signatureSha256')
+  $expectedReleaseFields=@('directory','commit','manifestSha256','signatureSha256','rehearsalOnly')
   if((@($entry.PSObject.Properties.Name|Sort-Object)-join',')-ne(@($expectedReleaseFields|Sort-Object)-join',')){throw "$role release plan schema is invalid"}
   if($entry.commit-notmatch'^[0-9a-f]{40}$'-or$entry.manifestSha256-notmatch'^[0-9a-f]{64}$'-or$entry.signatureSha256-notmatch'^[0-9a-f]{64}$'){throw "$role release plan fingerprints are invalid"}
-  $manifest=Join-Path $planned[$role] '.next\standalone\release-manifest.json';$signature="$manifest.sig.json"
+  $markerExists=Test-Path -LiteralPath (Join-Path $planned[$role] '.next\standalone\rehearsal-only.json') -PathType Leaf
+  if($role-eq'failure'-and($entry.rehearsalOnly-ne$true-or-not$markerExists)){throw 'Failure release is not marked as rehearsal-only'}
+  if($role-ne'failure'-and($entry.rehearsalOnly-ne$false-or$markerExists)){throw "$role release cannot be rehearsal-only"}
+  $standalone=Join-Path $planned[$role] '.next\standalone';$manifest=Join-Path $standalone 'release-manifest.json';$signature=Join-Path $standalone 'release-manifest.sig.json'
   if((Get-Sha256 $manifest)-ne$entry.manifestSha256-or(Get-Sha256 $signature)-ne$entry.signatureSha256){throw "$role release evidence changed after plan approval"}
 }
 $health=[Uri]$HealthUrl

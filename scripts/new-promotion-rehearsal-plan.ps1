@@ -29,7 +29,7 @@ foreach($entry in $roles.GetEnumerator()){
   if(-not(Test-Path -LiteralPath $release -PathType Container)){throw "$($entry.Key) release was not found"}
   $standalone=Join-Path $release '.next\standalone'
   $manifest=Join-Path $standalone 'release-manifest.json'
-  $signature="$manifest.sig.json"
+  $signature=Join-Path $standalone 'release-manifest.sig.json'
   foreach($path in @($manifest,$signature)){if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "$($entry.Key) release integrity evidence is incomplete"}}
   & $node $signingHelper verify $manifest $signature $publicKey
   if($LASTEXITCODE-ne0){throw "$($entry.Key) release signature verification failed"}
@@ -37,9 +37,17 @@ foreach($entry in $roles.GetEnumerator()){
   if($LASTEXITCODE-ne0){throw "$($entry.Key) release package integrity verification failed"}
   $manifestRecord=Get-Content -LiteralPath $manifest -Raw|ConvertFrom-Json
   if($manifestRecord.commit-notmatch'^[0-9a-f]{40}$'){throw "$($entry.Key) manifest has no valid source commit"}
+  $markerPath=Join-Path $standalone 'rehearsal-only.json'
+  $rehearsalOnly=Test-Path -LiteralPath $markerPath -PathType Leaf
+  if($entry.Key-eq'failure'-and-not$rehearsalOnly){throw 'Failure release must contain a signed rehearsal-only marker'}
+  if($entry.Key-ne'failure'-and$rehearsalOnly){throw "$($entry.Key) release must not be marked rehearsal-only"}
+  if($rehearsalOnly){
+    $marker=Get-Content -LiteralPath $markerPath -Raw|ConvertFrom-Json
+    if($marker.format-ne'performance-tracker-unhealthy-rehearsal-v1'-or$marker.rehearsalOnly-ne$true){throw 'Failure release rehearsal-only marker is invalid'}
+  }
   $releaseRecords[$entry.Key]=[ordered]@{
     directory=$release;commit=$manifestRecord.commit.ToLowerInvariant()
-    manifestSha256=Get-Sha256 $manifest;signatureSha256=Get-Sha256 $signature
+    manifestSha256=Get-Sha256 $manifest;signatureSha256=Get-Sha256 $signature;rehearsalOnly=$rehearsalOnly
   }
 }
 if(@($releaseRecords.Values.commit|Sort-Object -Unique).Count-ne3){throw 'Baseline, candidate, and failure manifests must identify three distinct source commits'}
