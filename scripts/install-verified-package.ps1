@@ -17,6 +17,11 @@ param(
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedReleaseSigningHelperSha256,
   [Parameter(Mandatory=$true)][string]$ApprovalRecordPath,
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedApprovalRecordSha256,
+  [Parameter(Mandatory=$true)][string]$AcceptanceRecordPath,
+  [Parameter(Mandatory=$true)][string]$AcceptanceSignaturePath,
+  [Parameter(Mandatory=$true)][string]$AcceptancePublicKey,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedAcceptanceRecordSha256,
+  [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedAcceptancePublicKeySha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
   [Parameter(Mandatory=$true)][string[]]$ApprovedPackageCustodians
@@ -56,9 +61,14 @@ try {
   $publicKey=[IO.Path]::GetFullPath($ReleasePublicKey)
   $node=Join-Path ([IO.Path]::GetFullPath($NodeRuntimeDirectory)) 'node.exe'
   $approvalRecord=[IO.Path]::GetFullPath($ApprovalRecordPath)
+  $acceptanceRecord=[IO.Path]::GetFullPath($AcceptanceRecordPath)
+  $acceptanceSignature=[IO.Path]::GetFullPath($AcceptanceSignaturePath)
+  $acceptancePublicKey=[IO.Path]::GetFullPath($AcceptancePublicKey)
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($publicKey)) @($publicKey) $ApprovedPackageCustodians
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($node)) @($node) $ApprovedPackageCustodians
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($approvalRecord)) @($approvalRecord) $ApprovedPackageCustodians
+  Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($acceptanceRecord)) @($acceptanceRecord,$acceptanceSignature) $ApprovedPackageCustodians
+  Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($acceptancePublicKey)) @($acceptancePublicKey) $ApprovedPackageCustodians
   $verification=@{
     InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$publicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
     ApprovedInstallerSha256=$ApprovedInstallerSha256;ApprovedSigningCertificateThumbprint=$ApprovedSigningCertificateThumbprint
@@ -67,7 +77,7 @@ try {
     ApprovedSignToolSha256=$ApprovedSignToolSha256;ApprovedReleasePublicKeySha256=$ApprovedReleasePublicKeySha256
     ApprovedNodeRuntimeSha256=$ApprovedNodeRuntimeSha256;ApprovedPackageCustodians=$ApprovedPackageCustodians
   }
-  Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node,$approvalRecord) {
+  Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node,$approvalRecord,$acceptanceRecord,$acceptanceSignature,$acceptancePublicKey) {
     $approvalHash=(Get-FileHash -LiteralPath $approvalRecord -Algorithm SHA256).Hash.ToLowerInvariant()
     if($approvalHash-ne$ApprovedApprovalRecordSha256.ToLowerInvariant()){throw 'Installer approval record fingerprint does not match independent approval'}
     $approval=Get-Content -LiteralPath $approvalRecord -Raw|ConvertFrom-Json
@@ -79,6 +89,18 @@ try {
       launcherSha256=$ApprovedLauncherSha256;verifierSha256=$ApprovedVerifierSha256;aclHelperSha256=$ApprovedAclHelperSha256
       releaseSigningHelperSha256=$ApprovedReleaseSigningHelperSha256
       packageCustodians=$ApprovedPackageCustodians
+    }
+    $acceptanceHash=(Get-FileHash -LiteralPath $acceptanceRecord -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($acceptanceHash-ne$ApprovedAcceptanceRecordSha256.ToLowerInvariant()){throw 'Rehearsal acceptance record fingerprint does not match independent approval'}
+    $acceptanceKeyHash=(Get-FileHash -LiteralPath $acceptancePublicKey -Algorithm SHA256).Hash.ToLowerInvariant()
+    if($acceptanceKeyHash-ne$ApprovedAcceptancePublicKeySha256.ToLowerInvariant()){throw 'Rehearsal acceptance public-key fingerprint does not match independent approval'}
+    & $node $releaseSigningHelper verify $acceptanceRecord $acceptanceSignature $acceptancePublicKey
+    if($LASTEXITCODE-ne0){throw 'Rehearsal acceptance signature verification failed'}
+    $acceptance=Get-Content -LiteralPath $acceptanceRecord -Raw|ConvertFrom-Json
+    Assert-RehearsalAcceptanceRecord $acceptance @{
+      releaseId=$ApprovedReleaseId;releaseCommit=$ApprovedReleaseCommit;installerSha256=$ApprovedInstallerSha256
+      installerApprovalSha256=$ApprovedApprovalRecordSha256;acceptancePublicKeySha256=$ApprovedAcceptancePublicKeySha256
+      authorizerSid=$approval.approvedBySid
     }
     & $verifier @verification
     $process=Start-Process -FilePath $installer -Wait -PassThru

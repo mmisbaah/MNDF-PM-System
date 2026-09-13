@@ -72,6 +72,22 @@ function Assert-InstallerApprovalRecord([object]$Record,[hashtable]$Expected){
   }
 }
 
+function Assert-RehearsalAcceptanceRecord([object]$Record,[hashtable]$Expected){
+  if($Record.format-ne'performance-tracker-rehearsal-acceptance-v1'){throw 'Version 1 rehearsal acceptance record is required'}
+  $required=@('format','decision','decisionReason','authorizedAt','host','authorizerSid','rehearsalOperatorSid','releaseId','releaseCommit','installerSha256','installerApprovalSha256','finalEvidenceManifestSha256','evidencePublicKeySha256','acceptancePublicKeySha256')
+  if(@(Compare-Object $required @($Record.PSObject.Properties.Name)).Count){throw 'Rehearsal acceptance record schema is incomplete or contains unknown fields'}
+  if($Record.decision-ne'GO'){throw 'A signed GO rehearsal acceptance is required for production installation'}
+  if(([string]$Record.decisionReason).Trim().Length-lt10){throw 'Rehearsal acceptance must include a meaningful decision reason'}
+  foreach($name in @('authorizerSid','rehearsalOperatorSid')){if(([string]$Record.$name)-notmatch'^S-1-(?:\d+-)*\d+$'){throw "Rehearsal acceptance $name must be an immutable Windows SID"}}
+  if([string]::Equals([string]$Record.authorizerSid,[string]$Record.rehearsalOperatorSid,[StringComparison]::OrdinalIgnoreCase)){throw 'Rehearsal acceptance must preserve two-person approval'}
+  try{$authorizedAt=[DateTimeOffset]::ParseExact([string]$Record.authorizedAt,'o',[Globalization.CultureInfo]::InvariantCulture)}catch{throw 'Rehearsal acceptance timestamp must use round-trip UTC format'}
+  if($authorizedAt.Offset-ne[TimeSpan]::Zero-or$authorizedAt-gt[DateTimeOffset]::UtcNow.AddMinutes(5)){throw 'Rehearsal acceptance timestamp is invalid or future-dated'}
+  foreach($name in $Expected.Keys){
+    $actual=[string]$Record.$name;$approved=[string]$Expected[$name]
+    if([string]::IsNullOrWhiteSpace($actual)-or-not[string]::Equals($actual,$approved,[StringComparison]::OrdinalIgnoreCase)){throw "Rehearsal acceptance record does not match approved $name"}
+  }
+}
+
 function Invoke-WithLockedInstallerBundle([string[]]$Paths,[scriptblock]$Action){
   if(-not$Paths.Count){throw 'Installer bundle paths are required'}
   $streams=[Collections.Generic.List[IO.FileStream]]::new()

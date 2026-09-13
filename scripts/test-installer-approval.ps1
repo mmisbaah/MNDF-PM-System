@@ -18,5 +18,13 @@ try{
   $record=Get-Content $output -Raw|ConvertFrom-Json;$record.PSObject.Properties.Remove('releaseId')
   $failed=$false;try{Assert-InstallerApprovalRecord $record @{}}catch{$failed=$_.Exception.Message-match'schema'}
   if(-not$failed){throw 'Incomplete installer approval schema was accepted'}
+  $acceptance=[pscustomobject][ordered]@{format='performance-tracker-rehearsal-acceptance-v1';decision='GO';decisionReason='All attended rehearsal safeguards passed.';authorizedAt=[DateTimeOffset]::UtcNow.ToString('o');host='STAGING-01';authorizerSid='S-1-5-21-1';rehearsalOperatorSid='S-1-5-21-2';releaseId='release-1';releaseCommit=('d'*40);installerSha256=$h;installerApprovalSha256=$h;finalEvidenceManifestSha256=$h;evidencePublicKeySha256=$h;acceptancePublicKeySha256=$h}
+  Assert-RehearsalAcceptanceRecord $acceptance @{releaseId='release-1';releaseCommit=('d'*40);installerSha256=$h;authorizerSid='S-1-5-21-1'}
+  $acceptance.decision='NO_GO';$failed=$false;try{Assert-RehearsalAcceptanceRecord $acceptance @{}}catch{$failed=$_.Exception.Message-match'signed GO'}
+  if(-not$failed){throw 'NO_GO rehearsal acceptance was accepted for production installation'}
+  $acceptance.decision='GO';$failed=$false;try{Assert-RehearsalAcceptanceRecord $acceptance @{releaseId='another-release'}}catch{$failed=$_.Exception.Message-match'releaseId'}
+  if(-not$failed){throw 'Rehearsal acceptance for another release was accepted'}
+  $acceptance.rehearsalOperatorSid=$acceptance.authorizerSid;$failed=$false;try{Assert-RehearsalAcceptanceRecord $acceptance @{}}catch{$failed=$_.Exception.Message-match'two-person'}
+  if(-not$failed){throw 'Single-account rehearsal acceptance was accepted'}
   Write-Output 'Installer approval ceremony tests passed.'
 }finally{Remove-Item -LiteralPath $root -Recurse -Force}

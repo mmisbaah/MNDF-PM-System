@@ -13,12 +13,19 @@ $helperHash=(Get-FileHash -LiteralPath $aclHelper -Algorithm SHA256).Hash
 $signingHelperHash=(Get-FileHash -LiteralPath $releaseSigningHelper -Algorithm SHA256).Hash
 $approvalRecord=Join-Path $testRoot 'install-approval.json';[IO.File]::WriteAllText($approvalRecord,'{}')
 $approvalRecordHash=(Get-FileHash -LiteralPath $approvalRecord -Algorithm SHA256).Hash
+$acceptanceRecord=Join-Path $testRoot 'rehearsal-acceptance.json';[IO.File]::WriteAllText($acceptanceRecord,'{}')
+$acceptanceSignature=Join-Path $testRoot 'rehearsal-acceptance.sig.json';[IO.File]::WriteAllText($acceptanceSignature,'{}')
+$acceptancePublicKey=Join-Path $testRoot 'rehearsal-acceptance-public.pem';[IO.File]::WriteAllText($acceptancePublicKey,'test')
+$acceptanceRecordHash=(Get-FileHash -LiteralPath $acceptanceRecord -Algorithm SHA256).Hash
+$acceptancePublicKeyHash=(Get-FileHash -LiteralPath $acceptancePublicKey -Algorithm SHA256).Hash
 $common=@{
   InstallerPath='missing.exe';BuildRecordPath='missing.json';ReleasePublicKey='missing.pem';NodeRuntimeDirectory='missing-runtime'
   ApprovedInstallerSha256=('1'*64);ApprovedSigningCertificateThumbprint=('2'*40);ApprovedTimestampCertificateThumbprint=('3'*40)
   ApprovedAppVersion='1.0.0';ApprovedReleaseCommit=('4'*40);ApprovedReleaseId='release-1';ApprovedSignToolSha256=('5'*64)
   ApprovedReleasePublicKeySha256=('6'*64);ApprovedPackageCustodians=@('S-1-5-18')
   ApprovalRecordPath=$approvalRecord;ApprovedApprovalRecordSha256=$approvalRecordHash
+  AcceptanceRecordPath=$acceptanceRecord;AcceptanceSignaturePath=$acceptanceSignature;AcceptancePublicKey=$acceptancePublicKey
+  ApprovedAcceptanceRecordSha256=$acceptanceRecordHash;ApprovedAcceptancePublicKeySha256=$acceptancePublicKeyHash
 }
 $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 ('0'*64) -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 $helperHash -ApprovedReleaseSigningHelperSha256 $signingHelperHash}catch{$failed=$_.Exception.Message-match'launcher fingerprint'}
 if(-not$failed){throw 'Installer launcher accepted an unapproved self fingerprint'}
