@@ -72,7 +72,9 @@ Assert-Match $packageAcl 'FileShare\]::Read' 'Installer bundle lock must deny co
 Assert-Match $packageAcl 'Assert-NonRedirectedInstallerPath' 'Installer package and trust paths must reject filesystem redirection'
 Assert-Match $packageAcl 'FileAttributes\]::ReparsePoint' 'Installer path validation must detect junctions and symbolic links'
 Assert-Match $launcher 'Approved verification-tool path contains a reparse point' 'Installer verification tools must reject redirected paths before locking'
-Assert-Match $launcher 'Invoke-WithLockedInstallerBundle @\(\$installer,\$record,\$signature,\$publicKey,\$node,\$approvalRecord,\$acceptanceRecord,\$acceptanceSignature,\$acceptancePublicKey\)' 'Installer launch must lock the signed handoff bundle, approval, acceptance and external trust inputs'
+Assert-Match $launcher '\$lockedBundle=@\(\$installer,\$record,\$signature,\$publicKey,\$node,\$approvalRecord,\$acceptanceRecord,\$acceptanceSignature,\$acceptancePublicKey\)' 'Installer launch must assemble the signed handoff bundle, approval, acceptance and external trust inputs'
+Assert-Match $launcher '\$lockedBundle\+=\$preflightReport' 'Installer launch must add approved preflight evidence to its lock set'
+Assert-Match $launcher 'Invoke-WithLockedInstallerBundle \$lockedBundle' 'Installer launch must lock the complete assembled trust bundle'
 Assert-Match $launcher 'ApprovedApprovalRecordSha256' 'Installer launch must require an independently approved approval-record fingerprint'
 Assert-Match $launcher 'Assert-InstallerApprovalRecord \$approval' 'Installer launch must bind individual release approvals into one record'
 Assert-Match $launcher 'packageCustodians=\$ApprovedPackageCustodians' 'Installer approval record must bind the package custodian ACL trust list'
@@ -104,7 +106,7 @@ Assert-Match $launcher '\$toolStreams.Add\(\[IO.File\]::Open\(.+\[IO.FileShare\]
 if($launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')-gt$launcher.IndexOf('. $aclHelper')){throw 'Verification tooling must be fingerprinted before helper code is loaded'}
 if($launcher.IndexOf('$toolStreams.Add')-gt$launcher.IndexOf('Get-FileHash -LiteralPath $tool.Path')){throw 'Verification tooling must be locked before fingerprinting'}
 if($launcher.IndexOf('$toolStreams[$index].Dispose()')-lt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Verification-tool locks must remain held through installer execution'}
-if($launcher.IndexOf('Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node,$approvalRecord,$acceptanceRecord,$acceptanceSignature,$acceptancePublicKey)')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Package, approval, acceptance and trust inputs must be locked before cryptographic verification'}
+if($launcher.IndexOf('Invoke-WithLockedInstallerBundle $lockedBundle')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Package, approval, acceptance, preflight and trust inputs must be locked before cryptographic verification'}
 if($launcher.IndexOf('$releaseSigningHelper verify $acceptanceRecord')-gt$launcher.IndexOf('Start-Process -FilePath $installer')){throw 'Rehearsal acceptance must be verified before installer launch'}
 if($launcher.IndexOf('Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($publicKey))')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Release-key ACL must be verified before cryptographic use'}
 if($launcher.IndexOf('Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($node))')-gt$launcher.IndexOf('& $verifier @verification')){throw 'Runtime ACL must be verified before execution'}

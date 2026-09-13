@@ -88,6 +88,20 @@ function Assert-RehearsalAcceptanceRecord([object]$Record,[hashtable]$Expected){
   }
 }
 
+function Assert-InstallPreflightReport([object]$Report,[hashtable]$Expected){
+  if($Report.format-ne'performance-tracker-install-preflight-v1'){throw 'Version 1 installation preflight report is required'}
+  $required=@('format','status','checkedAt','releaseId','releaseCommit','appVersion','installerSha256','installerApprovalSha256','rehearsalAcceptanceSha256','acceptancePublicKeySha256','signingCertificateThumbprint','timestampCertificateThumbprint','compilerSha256','signToolSha256','releasePublicKeySha256','nodeRuntimeSha256','launcherSha256','verifierSha256','aclHelperSha256','releaseSigningHelperSha256','packageCustodiansSha256','verificationMode','containsSecrets','installerLaunched')
+  if(@(Compare-Object $required @($Report.PSObject.Properties.Name)).Count){throw 'Installation preflight report schema is incomplete or contains unknown fields'}
+  if($Report.status-ne'PASS'-or$Report.verificationMode-ne'NON_ELEVATED_PREFLIGHT'-or$Report.containsSecrets-ne$false-or$Report.installerLaunched-ne$false){throw 'Installation preflight report does not represent a passed non-elevated verification'}
+  try{$checkedAt=[DateTimeOffset]::ParseExact([string]$Report.checkedAt,'o',[Globalization.CultureInfo]::InvariantCulture)}catch{throw 'Installation preflight timestamp must use round-trip UTC format'}
+  $now=[DateTimeOffset]::UtcNow
+  if($checkedAt.Offset-ne[TimeSpan]::Zero-or$checkedAt-gt$now.AddMinutes(5)-or$checkedAt-lt$now.AddHours(-24)){throw 'Installation preflight report is expired or future-dated'}
+  foreach($name in $Expected.Keys){
+    $actual=[string]$Report.$name;$approved=[string]$Expected[$name]
+    if([string]::IsNullOrWhiteSpace($actual)-or-not[string]::Equals($actual,$approved,[StringComparison]::OrdinalIgnoreCase)){throw "Installation preflight report does not match approved $name"}
+  }
+}
+
 function Invoke-WithLockedInstallerBundle([string[]]$Paths,[scriptblock]$Action){
   if(-not$Paths.Count){throw 'Installer bundle paths are required'}
   $streams=[Collections.Generic.List[IO.FileStream]]::new()

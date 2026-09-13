@@ -26,5 +26,13 @@ try{
   if(-not$failed){throw 'Rehearsal acceptance for another release was accepted'}
   $acceptance.rehearsalOperatorSid=$acceptance.authorizerSid;$failed=$false;try{Assert-RehearsalAcceptanceRecord $acceptance @{}}catch{$failed=$_.Exception.Message-match'two-person'}
   if(-not$failed){throw 'Single-account rehearsal acceptance was accepted'}
+  $preflight=[pscustomobject][ordered]@{format='performance-tracker-install-preflight-v1';status='PASS';checkedAt=[DateTimeOffset]::UtcNow.ToString('o');releaseId='release-1';releaseCommit=('d'*40);appVersion='1.2.3';installerSha256=$h;installerApprovalSha256=$h;rehearsalAcceptanceSha256=$h;acceptancePublicKeySha256=$h;signingCertificateThumbprint=$t;timestampCertificateThumbprint=$c;compilerSha256=$h;signToolSha256=$h;releasePublicKeySha256=$h;nodeRuntimeSha256=$h;launcherSha256=$h;verifierSha256=$h;aclHelperSha256=$h;releaseSigningHelperSha256=$h;packageCustodiansSha256=$h;verificationMode='NON_ELEVATED_PREFLIGHT';containsSecrets=$false;installerLaunched=$false}
+  Assert-InstallPreflightReport $preflight @{releaseId='release-1';releaseCommit=('d'*40);installerSha256=$h}
+  $preflight.installerSha256=('0'*64);$failed=$false;try{Assert-InstallPreflightReport $preflight @{installerSha256=$h}}catch{$failed=$_.Exception.Message-match'installerSha256'}
+  if(-not$failed){throw 'Preflight report for another installer was accepted'}
+  $preflight.installerSha256=$h;$preflight.checkedAt=[DateTimeOffset]::UtcNow.AddHours(-25).ToString('o');$failed=$false;try{Assert-InstallPreflightReport $preflight @{}}catch{$failed=$_.Exception.Message-match'expired'}
+  if(-not$failed){throw 'Expired installation preflight report was accepted'}
+  $preflight.checkedAt=[DateTimeOffset]::UtcNow.ToString('o');$preflight.installerLaunched=$true;$failed=$false;try{Assert-InstallPreflightReport $preflight @{}}catch{$failed=$_.Exception.Message-match'non-elevated'}
+  if(-not$failed){throw 'Preflight report claiming an installer launch was accepted'}
   Write-Output 'Installer approval ceremony tests passed.'
 }finally{Remove-Item -LiteralPath $root -Recurse -Force}

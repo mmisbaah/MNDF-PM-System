@@ -26,14 +26,19 @@ param(
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
   [Parameter(Mandatory=$true)][string[]]$ApprovedPackageCustodians,
   [switch]$PreflightOnly,
-  [string]$PreflightReportPath
+  [Parameter(Mandatory=$true)][string]$PreflightReportPath,
+  [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedPreflightReportSha256
 )
 $ErrorActionPreference='Stop'
-if($PreflightOnly-and[string]::IsNullOrWhiteSpace($PreflightReportPath)){throw 'PreflightReportPath is required with PreflightOnly'}
-if(-not$PreflightOnly-and-not[string]::IsNullOrWhiteSpace($PreflightReportPath)){throw 'PreflightReportPath may only be used with PreflightOnly'}
+if($PreflightOnly-and-not[string]::IsNullOrWhiteSpace($ApprovedPreflightReportSha256)){throw 'ApprovedPreflightReportSha256 must not be supplied while creating the preflight report'}
+if(-not$PreflightOnly-and[string]::IsNullOrWhiteSpace($ApprovedPreflightReportSha256)){throw 'ApprovedPreflightReportSha256 is required for elevated installation'}
 if($PreflightOnly){
   $preflightPrincipal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
   if($preflightPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'PreflightOnly must run from a non-elevated operator session'}
+}
+function Get-TextSha256([string]$Value){
+  $algorithm=[Security.Cryptography.SHA256]::Create()
+  try{return ([BitConverter]::ToString($algorithm.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes($Value)))).Replace('-','').ToLowerInvariant()}finally{$algorithm.Dispose()}
 }
 $launcher=[IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
 $verifier=Join-Path $PSScriptRoot 'verify-installer-package.ps1'
@@ -72,11 +77,13 @@ try {
   $acceptanceRecord=[IO.Path]::GetFullPath($AcceptanceRecordPath)
   $acceptanceSignature=[IO.Path]::GetFullPath($AcceptanceSignaturePath)
   $acceptancePublicKey=[IO.Path]::GetFullPath($AcceptancePublicKey)
+  $preflightReport=[IO.Path]::GetFullPath($PreflightReportPath)
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($publicKey)) @($publicKey) $ApprovedPackageCustodians
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($node)) @($node) $ApprovedPackageCustodians
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($approvalRecord)) @($approvalRecord) $ApprovedPackageCustodians
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($acceptanceRecord)) @($acceptanceRecord,$acceptanceSignature) $ApprovedPackageCustodians
   Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($acceptancePublicKey)) @($acceptancePublicKey) $ApprovedPackageCustodians
+  if(-not$PreflightOnly){Assert-ProtectedPackageAcl ([IO.Path]::GetDirectoryName($preflightReport)) @($preflightReport) $ApprovedPackageCustodians}
   $verification=@{
     InstallerPath=$installer;BuildRecordPath=$record;ReleasePublicKey=$publicKey;NodeRuntimeDirectory=$NodeRuntimeDirectory
     ApprovedInstallerSha256=$ApprovedInstallerSha256;ApprovedSigningCertificateThumbprint=$ApprovedSigningCertificateThumbprint
@@ -85,7 +92,9 @@ try {
     ApprovedSignToolSha256=$ApprovedSignToolSha256;ApprovedReleasePublicKeySha256=$ApprovedReleasePublicKeySha256
     ApprovedNodeRuntimeSha256=$ApprovedNodeRuntimeSha256;ApprovedPackageCustodians=$ApprovedPackageCustodians
   }
-  Invoke-WithLockedInstallerBundle @($installer,$record,$signature,$publicKey,$node,$approvalRecord,$acceptanceRecord,$acceptanceSignature,$acceptancePublicKey) {
+  $lockedBundle=@($installer,$record,$signature,$publicKey,$node,$approvalRecord,$acceptanceRecord,$acceptanceSignature,$acceptancePublicKey)
+  if(-not$PreflightOnly){$lockedBundle+=$preflightReport}
+  Invoke-WithLockedInstallerBundle $lockedBundle {
     $approvalHash=(Get-FileHash -LiteralPath $approvalRecord -Algorithm SHA256).Hash.ToLowerInvariant()
     if($approvalHash-ne$ApprovedApprovalRecordSha256.ToLowerInvariant()){throw 'Installer approval record fingerprint does not match independent approval'}
     $approval=Get-Content -LiteralPath $approvalRecord -Raw|ConvertFrom-Json
@@ -111,22 +120,37 @@ try {
       authorizerSid=$approval.approvedBySid
     }
     & $verifier @verification
+    $custodianFingerprint=Get-TextSha256 ((@($ApprovedPackageCustodians|ForEach-Object{([string]$_).Trim().ToUpperInvariant()}|Sort-Object -Unique))-join"`n")
     if($PreflightOnly){
       $report=[ordered]@{
         format='performance-tracker-install-preflight-v1';status='PASS';checkedAt=[DateTimeOffset]::UtcNow.ToString('o')
         releaseId=$ApprovedReleaseId;releaseCommit=$ApprovedReleaseCommit.ToLowerInvariant();appVersion=$ApprovedAppVersion
         installerSha256=$ApprovedInstallerSha256.ToLowerInvariant();installerApprovalSha256=$ApprovedApprovalRecordSha256.ToLowerInvariant()
-        rehearsalAcceptanceSha256=$ApprovedAcceptanceRecordSha256.ToLowerInvariant();releasePublicKeySha256=$ApprovedReleasePublicKeySha256.ToLowerInvariant()
-        nodeRuntimeSha256=$ApprovedNodeRuntimeSha256.ToLowerInvariant();launcherSha256=$ApprovedLauncherSha256.ToLowerInvariant()
+        rehearsalAcceptanceSha256=$ApprovedAcceptanceRecordSha256.ToLowerInvariant();acceptancePublicKeySha256=$ApprovedAcceptancePublicKeySha256.ToLowerInvariant()
+        signingCertificateThumbprint=$ApprovedSigningCertificateThumbprint.ToUpperInvariant();timestampCertificateThumbprint=$ApprovedTimestampCertificateThumbprint.ToUpperInvariant()
+        compilerSha256=$ApprovedCompilerSha256.ToLowerInvariant();signToolSha256=$ApprovedSignToolSha256.ToLowerInvariant();releasePublicKeySha256=$ApprovedReleasePublicKeySha256.ToLowerInvariant()
+        nodeRuntimeSha256=$ApprovedNodeRuntimeSha256.ToLowerInvariant();launcherSha256=$ApprovedLauncherSha256.ToLowerInvariant();verifierSha256=$ApprovedVerifierSha256.ToLowerInvariant()
+        aclHelperSha256=$ApprovedAclHelperSha256.ToLowerInvariant();releaseSigningHelperSha256=$ApprovedReleaseSigningHelperSha256.ToLowerInvariant();packageCustodiansSha256=$custodianFingerprint
         verificationMode='NON_ELEVATED_PREFLIGHT';containsSecrets=$false;installerLaunched=$false
       }
-      $reportPath=[IO.Path]::GetFullPath($PreflightReportPath);$parent=[IO.Path]::GetDirectoryName($reportPath)
+      $reportPath=$preflightReport;$parent=[IO.Path]::GetDirectoryName($reportPath)
       if(-not(Test-Path -LiteralPath $parent -PathType Container)){throw 'Preflight report destination directory does not exist'}
       $stream=[IO.File]::Open($reportPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::Read)
       try{$bytes=[Text.UTF8Encoding]::new($false).GetBytes(($report|ConvertTo-Json -Depth 4));$stream.Write($bytes,0,$bytes.Length);$stream.Flush($true)}finally{$stream.Dispose()}
       Write-Output "Production installation preflight passed: $reportPath"
       Write-Output "Preflight report SHA-256: $((Get-FileHash -LiteralPath $reportPath -Algorithm SHA256).Hash.ToLowerInvariant())"
     }else{
+      $preflightHash=(Get-FileHash -LiteralPath $preflightReport -Algorithm SHA256).Hash.ToLowerInvariant()
+      if($preflightHash-ne$ApprovedPreflightReportSha256.ToLowerInvariant()){throw 'Installation preflight report fingerprint does not match independent approval'}
+      $preflight=Get-Content -LiteralPath $preflightReport -Raw|ConvertFrom-Json
+      Assert-InstallPreflightReport $preflight @{
+        releaseId=$ApprovedReleaseId;releaseCommit=$ApprovedReleaseCommit;appVersion=$ApprovedAppVersion;installerSha256=$ApprovedInstallerSha256
+        installerApprovalSha256=$ApprovedApprovalRecordSha256;rehearsalAcceptanceSha256=$ApprovedAcceptanceRecordSha256;acceptancePublicKeySha256=$ApprovedAcceptancePublicKeySha256
+        signingCertificateThumbprint=$ApprovedSigningCertificateThumbprint;timestampCertificateThumbprint=$ApprovedTimestampCertificateThumbprint
+        compilerSha256=$ApprovedCompilerSha256;signToolSha256=$ApprovedSignToolSha256;releasePublicKeySha256=$ApprovedReleasePublicKeySha256;nodeRuntimeSha256=$ApprovedNodeRuntimeSha256
+        launcherSha256=$ApprovedLauncherSha256;verifierSha256=$ApprovedVerifierSha256;aclHelperSha256=$ApprovedAclHelperSha256;releaseSigningHelperSha256=$ApprovedReleaseSigningHelperSha256
+        packageCustodiansSha256=$custodianFingerprint
+      }
       $process=Start-Process -FilePath $installer -Wait -PassThru
       if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
     }

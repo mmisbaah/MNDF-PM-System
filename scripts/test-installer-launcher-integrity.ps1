@@ -18,6 +18,8 @@ $acceptanceSignature=Join-Path $testRoot 'rehearsal-acceptance.sig.json';[IO.Fil
 $acceptancePublicKey=Join-Path $testRoot 'rehearsal-acceptance-public.pem';[IO.File]::WriteAllText($acceptancePublicKey,'test')
 $acceptanceRecordHash=(Get-FileHash -LiteralPath $acceptanceRecord -Algorithm SHA256).Hash
 $acceptancePublicKeyHash=(Get-FileHash -LiteralPath $acceptancePublicKey -Algorithm SHA256).Hash
+$preflightReport=Join-Path $testRoot 'install-preflight.json';[IO.File]::WriteAllText($preflightReport,'{}')
+$preflightReportHash=(Get-FileHash -LiteralPath $preflightReport -Algorithm SHA256).Hash
 $common=@{
   InstallerPath='missing.exe';BuildRecordPath='missing.json';ReleasePublicKey='missing.pem';NodeRuntimeDirectory='missing-runtime'
   ApprovedInstallerSha256=('1'*64);ApprovedSigningCertificateThumbprint=('2'*40);ApprovedTimestampCertificateThumbprint=('3'*40)
@@ -26,6 +28,7 @@ $common=@{
   ApprovalRecordPath=$approvalRecord;ApprovedApprovalRecordSha256=$approvalRecordHash
   AcceptanceRecordPath=$acceptanceRecord;AcceptanceSignaturePath=$acceptanceSignature;AcceptancePublicKey=$acceptancePublicKey
   ApprovedAcceptanceRecordSha256=$acceptanceRecordHash;ApprovedAcceptancePublicKeySha256=$acceptancePublicKeyHash
+  PreflightReportPath=$preflightReport;ApprovedPreflightReportSha256=$preflightReportHash
 }
 $failed=$false;try{& $launcher @common -ApprovedLauncherSha256 ('0'*64) -ApprovedVerifierSha256 $verifierHash -ApprovedAclHelperSha256 $helperHash -ApprovedReleaseSigningHelperSha256 $signingHelperHash}catch{$failed=$_.Exception.Message-match'launcher fingerprint'}
 if(-not$failed){throw 'Installer launcher accepted an unapproved self fingerprint'}
