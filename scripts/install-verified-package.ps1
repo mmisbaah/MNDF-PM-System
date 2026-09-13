@@ -24,9 +24,17 @@ param(
   [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedAcceptancePublicKeySha256,
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedCompilerSha256='0a8757031b33777e4c9cbffee40f11a5062b36d25cbe144c1db73b6102b80ad7',
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ApprovedNodeRuntimeSha256='3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237',
-  [Parameter(Mandatory=$true)][string[]]$ApprovedPackageCustodians
+  [Parameter(Mandatory=$true)][string[]]$ApprovedPackageCustodians,
+  [switch]$PreflightOnly,
+  [string]$PreflightReportPath
 )
 $ErrorActionPreference='Stop'
+if($PreflightOnly-and[string]::IsNullOrWhiteSpace($PreflightReportPath)){throw 'PreflightReportPath is required with PreflightOnly'}
+if(-not$PreflightOnly-and-not[string]::IsNullOrWhiteSpace($PreflightReportPath)){throw 'PreflightReportPath may only be used with PreflightOnly'}
+if($PreflightOnly){
+  $preflightPrincipal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
+  if($preflightPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'PreflightOnly must run from a non-elevated operator session'}
+}
 $launcher=[IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
 $verifier=Join-Path $PSScriptRoot 'verify-installer-package.ps1'
 $aclHelper=Join-Path $PSScriptRoot 'installer-package-acl.ps1'
@@ -103,10 +111,27 @@ try {
       authorizerSid=$approval.approvedBySid
     }
     & $verifier @verification
-    $process=Start-Process -FilePath $installer -Wait -PassThru
-    if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
+    if($PreflightOnly){
+      $report=[ordered]@{
+        format='performance-tracker-install-preflight-v1';status='PASS';checkedAt=[DateTimeOffset]::UtcNow.ToString('o')
+        releaseId=$ApprovedReleaseId;releaseCommit=$ApprovedReleaseCommit.ToLowerInvariant();appVersion=$ApprovedAppVersion
+        installerSha256=$ApprovedInstallerSha256.ToLowerInvariant();installerApprovalSha256=$ApprovedApprovalRecordSha256.ToLowerInvariant()
+        rehearsalAcceptanceSha256=$ApprovedAcceptanceRecordSha256.ToLowerInvariant();releasePublicKeySha256=$ApprovedReleasePublicKeySha256.ToLowerInvariant()
+        nodeRuntimeSha256=$ApprovedNodeRuntimeSha256.ToLowerInvariant();launcherSha256=$ApprovedLauncherSha256.ToLowerInvariant()
+        verificationMode='NON_ELEVATED_PREFLIGHT';containsSecrets=$false;installerLaunched=$false
+      }
+      $reportPath=[IO.Path]::GetFullPath($PreflightReportPath);$parent=[IO.Path]::GetDirectoryName($reportPath)
+      if(-not(Test-Path -LiteralPath $parent -PathType Container)){throw 'Preflight report destination directory does not exist'}
+      $stream=[IO.File]::Open($reportPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::Read)
+      try{$bytes=[Text.UTF8Encoding]::new($false).GetBytes(($report|ConvertTo-Json -Depth 4));$stream.Write($bytes,0,$bytes.Length);$stream.Flush($true)}finally{$stream.Dispose()}
+      Write-Output "Production installation preflight passed: $reportPath"
+      Write-Output "Preflight report SHA-256: $((Get-FileHash -LiteralPath $reportPath -Algorithm SHA256).Hash.ToLowerInvariant())"
+    }else{
+      $process=Start-Process -FilePath $installer -Wait -PassThru
+      if($process.ExitCode-ne0){throw "Verified installer exited with code $($process.ExitCode)"}
+    }
   }
 } finally {
   for($index=$toolStreams.Count-1;$index-ge0;$index--){$toolStreams[$index].Dispose()}
 }
-Write-Output 'Verified installer completed successfully.'
+if($PreflightOnly){Write-Output 'Verified installer preflight completed without launching the installer.'}else{Write-Output 'Verified installer completed successfully.'}
