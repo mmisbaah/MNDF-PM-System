@@ -75,7 +75,7 @@ $productionScriptNames=@(
   'install-application-task.ps1','install-audit-export-task.ps1','install-backup-task.ps1','install-evidence-scan-task.ps1',
   'install-monitor-task.ps1','install-scheduled-jobs-task.ps1','monitor-production.ps1','production-acl-policy.ps1',
   'promote-release.ps1','protected-secret-file.ps1','release-integrity.mjs',
-  'release-signing.mjs','resolve-node-runtime.ps1','run-scheduled-jobs.ps1','scan-evidence-defender.ps1','serialize-production-env.ps1',
+  'release-signing.mjs','resolve-node-runtime.ps1','run-scheduled-jobs.ps1','scan-evidence-defender.ps1','serialize-production-env.ps1','new-production-installation-receipt.ps1',
   'set-production-acls.ps1','start-production.ps1','validate-production-env.mjs',
   'verify-audit-export.ps1','verify-production-acls.ps1','verify-production-restore.ps1','verify-restore.ps1',
   'verify-windows-host.ps1'

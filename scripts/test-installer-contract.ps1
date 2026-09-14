@@ -30,7 +30,7 @@ if(-not$allowlistMatch.Success){throw 'Production-helper allowlist could not be 
 $allowedNames=@([regex]::Matches($allowlistMatch.Groups[1].Value,"'([^']+)'")|ForEach-Object{$_.Groups[1].Value})
 if(-not$allowedNames.Count-or@($allowedNames|Sort-Object -Unique).Count-ne$allowedNames.Count){throw 'Production-helper allowlist must be non-empty and contain no duplicates'}
 foreach($name in $allowedNames){if(-not(Test-Path -LiteralPath (Join-Path $project "scripts\$name") -PathType Leaf)){throw "Production-helper allowlist names a missing file: $name"}}
-foreach($requiredRuntime in @('start-production.ps1','validate-production-env.mjs','release-integrity.mjs','release-signing.mjs','apply-migrations.ps1','backup-production.ps1','scan-evidence-defender.ps1')){
+foreach($requiredRuntime in @('start-production.ps1','validate-production-env.mjs','release-integrity.mjs','release-signing.mjs','apply-migrations.ps1','backup-production.ps1','scan-evidence-defender.ps1','new-production-installation-receipt.ps1')){
   if($requiredRuntime-notin$allowedNames){throw "Required production helper is absent from the allowlist: $requiredRuntime"}
 }
 foreach($forbidden in @('lint-progress.mjs','browser-regression.mjs','provision-baseline-local.mjs','release-gate.ps1','test-installer-contract.ps1')){

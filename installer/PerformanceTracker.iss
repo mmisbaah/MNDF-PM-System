@@ -50,6 +50,7 @@ Name: "{app}\releases"
 Source: "{#ReleaseSource}\.next\standalone\*"; DestDir: "{app}\releases\{#ReleaseId}\.next\standalone"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleaseSource}\scripts\*"; DestDir: "{app}\releases\{#ReleaseId}\scripts"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleaseSource}\database\migrations\*"; DestDir: "{app}\releases\{#ReleaseId}\database\migrations"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
+Source: "{#ReleaseSource}\database\tests\*"; DestDir: "{app}\releases\{#ReleaseId}\database\tests"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleaseSource}\deploy\*"; DestDir: "{app}\releases\{#ReleaseId}\deploy"; Flags: ignoreversion recursesubdirs createallsubdirs uninsneveruninstall
 Source: "{#ReleasePublicKey}"; DestDir: "{app}\config"; DestName: "release-signing-public.pem"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "{#NodeRuntimeSource}\node.exe"; DestDir: "{app}\runtime"; Flags: ignoreversion
