@@ -1,0 +1,17 @@
+$ErrorActionPreference='Stop'
+$project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent));$script=Get-Content -LiteralPath (Join-Path $project 'scripts\new-final-archive-integrity-review.ps1') -Raw
+function Assert-Match([string]$Pattern,[string]$Message){if($script-notmatch$Pattern){throw $Message}}
+Assert-Match 'Archive integrity review and signature must not already exist' 'Review evidence must be append-only'
+Assert-Match 'ApprovedVerificationArgumentsSha256' 'Review invocation must be independently fingerprinted'
+Assert-Match 'Assert-OrdinaryPath' 'Review must reject redirected trust inputs'
+Assert-Match '\[IO\.FileShare\]::Read' 'Review must lock all inputs against replacement'
+Assert-Match 'O=OpenJS Foundation' 'Review must authenticate Node.js'
+Assert-Match '\$helper verify \$policy \$policySignature \$policyKey' 'Review must authenticate the retention policy'
+Assert-Match 'Assert-ExactSchema.+policyRecord' 'Review must enforce exact policy schema'
+Assert-Match 'Assert-ExactSchema.+verificationRecord' 'Review must enforce exact invocation schema'
+Assert-Match '& \$verifier @verifyArgs' 'Review must run complete archive verification'
+Assert-Match "format='performance-tracker-final-archive-integrity-review-v1'" 'Review must use a versioned schema'
+Assert-Match "status='PASS'" 'Only successful verification may create review evidence'
+Assert-Match 'automaticDeletion=\$false' 'Review must never delete archive evidence'
+Assert-Match '\$helper sign \$review \$privateKey \$reviewSignature' 'Review evidence must be signed'
+Write-Output 'PASS final archive integrity-review contract'
