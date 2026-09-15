@@ -1,0 +1,18 @@
+$ErrorActionPreference='Stop'
+$project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent));$script=Get-Content -LiteralPath (Join-Path $project 'scripts\new-final-archive-retention-policy.ps1') -Raw
+function Assert-Match([string]$Pattern,[string]$Message){if($script-notmatch$Pattern){throw $Message}}
+Assert-Match 'Retention policy and signature must not already exist' 'Retention policy must be immutable'
+Assert-Match 'Retention private key must remain separate' 'Retention signing key must not enter policy evidence'
+Assert-Match 'ValidateRange\(1,366\)' 'Policy review must recur at least annually'
+Assert-Match 'ValidateRange\(1,25\)' 'Retention period must be bounded'
+Assert-Match "ValidateSet\('REVIEW_REQUIRED','AUTHORIZED_DESTRUCTION','PERMANENT_RETENTION'\)" 'Post-retention action must be controlled'
+Assert-Match "ValidatePattern\('\^S-1-" 'Custodian must be an immutable Windows SID'
+Assert-Match 'Assert-OrdinaryPath' 'Policy creation must reject redirected trust inputs'
+Assert-Match '\[IO\.FileShare\]::Read' 'Policy inputs must be locked against replacement'
+Assert-Match 'O=OpenJS Foundation' 'Policy creation must authenticate Node.js'
+Assert-Match '\$helper verify \$manifest \$manifestSignature \$archiveKey' 'Policy creation must authenticate the archive manifest'
+Assert-Match "format='performance-tracker-final-archive-retention-policy-v1'" 'Policy must use a versioned schema'
+Assert-Match 'automaticDeletion=\$false' 'Policy must never authorize automatic evidence deletion'
+Assert-Match 'containsSecrets=\$false' 'Policy must be explicitly secret-free'
+Assert-Match '\$helper sign \$policy \$privateKey \$policySignature' 'Policy must be signed'
+Write-Output 'PASS final archive retention-policy contract'
