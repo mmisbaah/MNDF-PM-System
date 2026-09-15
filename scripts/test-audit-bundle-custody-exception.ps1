@@ -1,0 +1,18 @@
+$ErrorActionPreference='Stop'
+$project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent));$script=Get-Content -LiteralPath (Join-Path $project 'scripts\new-audit-bundle-custody-exception.ps1') -Raw
+function Assert-Match([string]$Pattern,[string]$Message){if($script-notmatch$Pattern){throw $Message}}
+Assert-Match "ValidateSet\('ACKNOWLEDGEMENT_OVERDUE','RECEIVER_UNAVAILABLE','TRANSFER_MEDIA_LOST','TRANSFER_CANCELLED'\)" 'Exceptions must use controlled reason classifications'
+Assert-Match 'ValidateRange\(1,720\)' 'Acknowledgement window must be bounded'
+Assert-Match 'AuthorizedCustodianSids' 'Exception signing must require approved custodians'
+Assert-Match 'Current Windows identity is not an approved custody exception signer' 'Unapproved identities must be rejected'
+Assert-Match 'Authorized custodian SIDs must be unique' 'Custodian approval list must reject duplicates'
+Assert-Match 'A custody receipt or exception already exists' 'Existing custody outcomes must not be overwritten'
+Assert-Match '\[IO\.FileShare\]::Read' 'Signed inputs must be locked against replacement'
+Assert-Match 'O=OpenJS Foundation' 'Exception creation must authenticate Node.js'
+Assert-Match '\$helper verify \$handoff \$handoffSignature \$senderKey' 'Exception creation must authenticate the handoff'
+Assert-Match 'Custody acknowledgement window has not expired' 'Overdue exceptions must enforce the acknowledgement deadline'
+Assert-Match 'A receiver custody receipt appeared during exception creation' 'Receipt races must invalidate exception creation'
+Assert-Match "format='performance-tracker-audit-custody-exception-v1'" 'Exception must use a versioned schema'
+Assert-Match 'receiptPresent=\$false;containsSecrets=\$false' 'Exception must be redacted and record absent acknowledgement'
+Assert-Match '\$helper sign \$exception \$privateKey \$exceptionSignature' 'Exception record must be signed'
+Write-Output 'PASS audit bundle custody exception contract'
