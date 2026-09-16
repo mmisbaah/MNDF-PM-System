@@ -21,7 +21,7 @@ The configuration and evidence directories must not be inside the Git checkout o
 
 ## Database
 
-Create distinct PostgreSQL logins for administration/migrations, the application runtime, and backups. Apply migrations with `scripts/apply-migrations.ps1`. Supply only the restricted runtime URL to the web process. Confirm that the runtime user has no `BYPASSRLS`, does not own tables, and inherits `mndf_pms_runtime`.
+Create distinct PostgreSQL logins for administration/migrations, the application runtime, and backups. Apply migrations with `scripts/apply-migrations.ps1`. The script records each completed schema migration and its SHA-256 in the protected `performance_tracker_meta.schema_migrations` ledger; later deployments skip matching entries and reject modified historical migrations. Supply only the restricted runtime URL to the web process. Confirm that the runtime user has no `BYPASSRLS`, does not own tables, and inherits `mndf_pms_runtime`.
 
 ## Build and package
 

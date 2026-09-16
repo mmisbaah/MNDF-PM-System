@@ -3,6 +3,8 @@ $project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent));$script=Get-
 function Assert-Match([string]$Value,[string]$Pattern,[string]$Message){if($Value-notmatch$Pattern){throw $Message}}
 Assert-Match $migration "format='performance-tracker-migration-evidence-v1'" 'Migrations must emit versioned evidence'
 Assert-Match $migration 'GRANT mndf_pms_runtime TO \$ApplicationRole WITH INHERIT TRUE, SET FALSE' 'Application role must inherit runtime access without assuming the runtime identity'
+Assert-Match $migration 'performance_tracker_meta\.schema_migrations' 'Migrations must use a protected applied-migration ledger'
+Assert-Match $migration 'Applied migration hash mismatch' 'Changed historical migrations must fail closed'
 Assert-Match $migration 'databaseUrlsRecorded=\$false' 'Migration evidence must exclude database URLs'
 Assert-Match $migration '\[IO.FileMode\]::CreateNew' 'Migration evidence must not overwrite prior evidence'
 Assert-Match $iss '\{#ReleaseSource\}\\database\\tests\\\*' 'Installer must include the database verification SQL'

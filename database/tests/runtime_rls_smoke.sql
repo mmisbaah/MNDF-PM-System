@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
 INSERT INTO tenants(id,code,name,status)VALUES
  ('10000000-0000-0000-0000-000000000001','STAGE11-A','Stage 1.1 Tenant A','ACTIVE'),
- ('20000000-0000-0000-0000-000000000002','STAGE11-B','Stage 1.1 Tenant B','ACTIVE');
+ ('20000000-0000-0000-0000-000000000002','STAGE11-B','Stage 1.1 Tenant B','ACTIVE') ON CONFLICT(id) DO NOTHING;
 INSERT INTO accounts(id,tenant_id,email,password_hash,is_active)VALUES
  ('11000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','admin-a@example.test','not-a-real-password-hash-stage11-a',true),
- ('22000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000002','admin-b@example.test','not-a-real-password-hash-stage11-b',true);
+ ('22000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000002','admin-b@example.test','not-a-real-password-hash-stage11-b',true) ON CONFLICT(tenant_id,id) DO NOTHING;
 
 SET SESSION AUTHORIZATION mndf_pms_app;
 BEGIN;
