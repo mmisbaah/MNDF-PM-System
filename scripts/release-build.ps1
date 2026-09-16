@@ -10,8 +10,15 @@ Push-Location $project
 try {
   & node (Join-Path $PSScriptRoot 'materialize-standalone.mjs') check $project
   if($LASTEXITCODE -ne 0){throw 'Release dependency layout check failed'}
-  & npm run build
-  if($LASTEXITCODE -ne 0){throw 'Release build failed; no provenance receipt was issued'}
+  $hadDatabaseUrl=Test-Path Env:DATABASE_URL
+  $previousDatabaseUrl=$env:DATABASE_URL
+  if(-not$hadDatabaseUrl){$env:DATABASE_URL='postgresql://release_build_only@127.0.0.1:1/release_build'}
+  try {
+    & npm run build
+    if($LASTEXITCODE -ne 0){throw 'Release build failed; no provenance receipt was issued'}
+  } finally {
+    if($hadDatabaseUrl){$env:DATABASE_URL=$previousDatabaseUrl}else{Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue}
+  }
   if((Get-CleanReleaseCommit $project) -ne $commit){throw 'Source changed during release build'}
   $standalone=Join-Path $next 'standalone'
   if(-not(Test-Path -LiteralPath (Join-Path $standalone 'server.js'))){throw 'Standalone build output is missing'}

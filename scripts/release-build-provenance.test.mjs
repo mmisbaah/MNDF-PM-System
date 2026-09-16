@@ -33,6 +33,12 @@ test('receipt binds commit and exact build inventory; missing/stale/tampered rec
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('release build uses a non-secret database placeholder only during compilation', async () => {
+  const source = await readFile(fileURLToPath(new URL('release-build.ps1', import.meta.url)), 'utf8');
+  assert.match(source, /if\(-not\$hadDatabaseUrl\)\{\$env:DATABASE_URL='postgresql:\/\/release_build_only@127\.0\.0\.1:1\/release_build'\}/);
+  assert.match(source, /if\(\$hadDatabaseUrl\)\{\$env:DATABASE_URL=\$previousDatabaseUrl\}else\{Remove-Item Env:DATABASE_URL/);
+});
+
 test('real release orchestration rejects failed, reused and changed-source builds', { skip: process.platform !== 'win32' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tracker-build-flow-'));
   const run = (command, args) => spawnSync(command, args, { cwd: root, encoding: 'utf8' });
