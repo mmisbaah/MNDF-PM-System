@@ -14,7 +14,7 @@ $migrations = Join-Path $root 'database\migrations'
 
 & psql $AdminDatabaseUrl -v ON_ERROR_STOP=1 -f (Join-Path $migrations '0000_deployment_roles.sql')
 if ($LASTEXITCODE -ne 0) { throw 'Role bootstrap migration failed' }
-& psql $AdminDatabaseUrl -v ON_ERROR_STOP=1 -c "GRANT mndf_pms_runtime TO $ApplicationRole"
+& psql $AdminDatabaseUrl -v ON_ERROR_STOP=1 -c "GRANT mndf_pms_runtime TO $ApplicationRole WITH INHERIT TRUE, SET FALSE"
 if ($LASTEXITCODE -ne 0) { throw 'Application runtime-role membership grant failed' }
 
 $owned = Get-ChildItem $migrations -Filter '*.sql' |

@@ -2,6 +2,7 @@ $ErrorActionPreference='Stop'
 $project=[IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent));$script=Get-Content -LiteralPath (Join-Path $project 'scripts\new-production-installation-receipt.ps1') -Raw;$migration=Get-Content -LiteralPath (Join-Path $project 'scripts\apply-migrations.ps1') -Raw;$iss=Get-Content -LiteralPath (Join-Path $project 'installer\PerformanceTracker.iss') -Raw
 function Assert-Match([string]$Value,[string]$Pattern,[string]$Message){if($Value-notmatch$Pattern){throw $Message}}
 Assert-Match $migration "format='performance-tracker-migration-evidence-v1'" 'Migrations must emit versioned evidence'
+Assert-Match $migration 'GRANT mndf_pms_runtime TO \$ApplicationRole WITH INHERIT TRUE, SET FALSE' 'Application role must inherit runtime access without assuming the runtime identity'
 Assert-Match $migration 'databaseUrlsRecorded=\$false' 'Migration evidence must exclude database URLs'
 Assert-Match $migration '\[IO.FileMode\]::CreateNew' 'Migration evidence must not overwrite prior evidence'
 Assert-Match $iss '\{#ReleaseSource\}\\database\\tests\\\*' 'Installer must include the database verification SQL'
