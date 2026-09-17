@@ -26,6 +26,17 @@ Transfer the immutable release package and detached signature together. `promote
 
 For the Windows installer, `installer/build-installer.ps1` creates a disposable staging copy. Production PowerShell signatures are applied only there; the reviewed checkout and provenance-bound build remain unchanged. Because signing changes helper bytes, the builder recreates the staged integrity manifest and signs it with `-ReleaseSigningPrivateKey` using the separately supplied `RELEASE_SIGNING_KEY_PASSPHRASE`. It verifies the staged manifest and package before compilation and always removes staging. Never pass the custody key to rehearsal builds or place it in the repository, output directory, logs, or command history.
 
+Before production packaging, create a signed release-candidate attestation with
+`scripts/new-release-candidate-attestation.ps1`. It accepts only a full `PASS`
+release-gate result (never `CODE_ONLY_PASS`), a matching live `main` branch
+protection verification, and the exact version 3 release manifest. The signed
+record binds their SHA-256 fingerprints to the release ID, repository, branch,
+commit, and release trust key. Supply the record and detached signature to
+`build-installer.ps1`; production packaging rejects missing, altered, mismatched,
+stale (older than 24 hours by default), future-dated, or unknown-schema evidence.
+Unsigned rehearsal installers deliberately carry
+null attestation fingerprints and remain unauthorized for production.
+
 Rotate the signing key after suspected compromise or under the organization's approved cryptographic schedule. Promotion must remain paused while the pinned public key is changed through an independently approved deployment action. Preserve old public keys with historical release evidence; never use them to approve new packages.
 
 ## Output safety and partial failures

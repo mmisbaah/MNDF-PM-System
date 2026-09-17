@@ -11,6 +11,8 @@ param(
   [ValidatePattern('^[0-9a-fA-F]{64}$')][string]$TrustedSignToolSha256,
   [string]$SigningCertificateThumbprint,
   [string]$ReleaseSigningPrivateKey,
+  [string]$ReleaseCandidateAttestationPath,
+  [string]$ReleaseCandidateAttestationSignaturePath,
   [string]$TimestampUrl='https://timestamp.digicert.com',
   [ValidatePattern('^[0-9a-fA-F]{40}$')][string]$TrustedTimestampCertificateThumbprint,
   [string]$OutputDirectory=(Join-Path $PSScriptRoot 'output'),
@@ -49,6 +51,20 @@ $publicKeySha256=(Get-FileHash -LiteralPath $publicKey -Algorithm SHA256).Hash.T
 if($LASTEXITCODE-ne0){throw 'Prepared release signature did not verify against the supplied public key'}
 & $nodeExecutable (Join-Path $release 'scripts\release-integrity.mjs') verify (Join-Path $release '.next\standalone') (Join-Path $release 'scripts')
 if($LASTEXITCODE-ne0){throw 'Prepared release package integrity verification failed'}
+$candidateAttestationSha256=$null;$candidateAttestationSignatureSha256=$null
+if(-not$AllowUnsignedRehearsal){
+  foreach($path in @($ReleaseCandidateAttestationPath,$ReleaseCandidateAttestationSignaturePath)){if([string]::IsNullOrWhiteSpace($path)-or-not(Test-Path -LiteralPath $path -PathType Leaf)){throw 'Signed release candidate attestation is required for production packaging'}}
+  $attestationPath=[IO.Path]::GetFullPath($ReleaseCandidateAttestationPath);$attestationSignaturePath=[IO.Path]::GetFullPath($ReleaseCandidateAttestationSignaturePath)
+  & $nodeExecutable (Join-Path $release 'scripts\release-signing.mjs') verify $attestationPath $attestationSignaturePath $publicKey
+  if($LASTEXITCODE-ne0){throw 'Release candidate attestation signature verification failed'}
+  $attestation=Get-Content -LiteralPath $attestationPath -Raw|ConvertFrom-Json
+  $expectedAttestationFields=@('format','status','createdAt','releaseId','repository','branch','releaseCommit','releaseManifestSha256','releaseGateSha256','branchVerificationSha256','releasePublicKeySha256','containsSecrets')
+  if((@($attestation.PSObject.Properties.Name|Sort-Object)-join',')-ne(@($expectedAttestationFields|Sort-Object)-join',')){throw 'Release candidate attestation schema is incomplete or contains unknown fields'}
+  $manifestSha256=(Get-FileHash -LiteralPath (Join-Path $release '.next\standalone\release-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($attestation.format-ne'performance-tracker-release-candidate-attestation-v1'-or$attestation.status-ne'ATTESTED'-or$attestation.containsSecrets-ne$false-or$attestation.releaseId-ne$ReleaseId-or$attestation.releaseCommit-ne$manifest.commit-or$attestation.releaseManifestSha256-ne$manifestSha256-or$attestation.releasePublicKeySha256-ne$publicKeySha256){throw 'Release candidate attestation does not authorize this exact package'}
+  foreach($hash in @($attestation.releaseGateSha256,$attestation.branchVerificationSha256)){if(([string]$hash)-notmatch'^[0-9a-f]{64}$'){throw 'Release candidate attestation contains an invalid evidence fingerprint'}}
+  $candidateAttestationSha256=(Get-FileHash -LiteralPath $attestationPath -Algorithm SHA256).Hash.ToLowerInvariant();$candidateAttestationSignatureSha256=(Get-FileHash -LiteralPath $attestationSignaturePath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
 if(-not$CompilerPath){$command=Get-Command ISCC.exe -ErrorAction SilentlyContinue;if($command){$CompilerPath=$command.Source}}
 if(-not$CompilerPath-or-not(Test-Path -LiteralPath $CompilerPath -PathType Leaf)){throw 'Inno Setup compiler ISCC.exe was not found. Install the approved compiler or pass -CompilerPath.'}
 $compiler=[IO.Path]::GetFullPath($CompilerPath)
@@ -148,7 +164,7 @@ if(-not$AllowUnsignedRehearsal-and$signature.SignerCertificate.Thumbprint-ne$Sig
 if(-not$AllowUnsignedRehearsal-and$signature.TimeStamperCertificate.Thumbprint-ne$TrustedTimestampCertificateThumbprint){throw 'Compiled installer timestamp does not match the independently approved timestamp certificate'}
 $allowlistBytes=[Text.Encoding]::UTF8.GetBytes(((@($productionScriptNames|Sort-Object)-join"`n")+"`n"))
 $allowlistSha256=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($allowlistBytes)).Replace('-','').ToLowerInvariant()
-$record=[ordered]@{format='performance-tracker-installer-build-v8';installerFile=[IO.Path]::GetFileName($installer.FullName);recordFile=[IO.Path]::GetFileName($buildRecordPath);recordSignatureFile=if($AllowUnsignedRehearsal){$null}else{[IO.Path]::GetFileName($buildRecordSignaturePath)};sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;signToolSha256=$signToolSha256;signToolSigner=$signToolSigner;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;nodeRuntimeSigner=$nodeRuntimeSigner;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;authenticodeStatus=[string]$signature.Status;installerSignerSubject=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Subject};installerSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Thumbprint.ToLowerInvariant()};timestampSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()};productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
+$record=[ordered]@{format='performance-tracker-installer-build-v9';installerFile=[IO.Path]::GetFileName($installer.FullName);recordFile=[IO.Path]::GetFileName($buildRecordPath);recordSignatureFile=if($AllowUnsignedRehearsal){$null}else{[IO.Path]::GetFileName($buildRecordSignaturePath)};sha256=(Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant();releaseCommit=$manifest.commit;releaseId=$ReleaseId;version=$AppVersion;compilerSha256=$compilerSha256;compilerSigner=$compilerSignature.SignerCertificate.Subject;signToolSha256=$signToolSha256;signToolSigner=$signToolSigner;nodeRuntimeVersion=$runtimeVersion;nodeRuntimeSha256=$nodeRuntimeSha256;nodeRuntimeSigner=$nodeRuntimeSigner;releasePublicKeySha256=$publicKeySha256;productionHelperAllowlistSha256=$allowlistSha256;releaseCandidateAttestationSha256=$candidateAttestationSha256;releaseCandidateAttestationSignatureSha256=$candidateAttestationSignatureSha256;authenticodeStatus=[string]$signature.Status;installerSignerSubject=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Subject};installerSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.SignerCertificate.Thumbprint.ToLowerInvariant()};timestampSignerThumbprint=if($AllowUnsignedRehearsal){$null}else{$signature.TimeStamperCertificate.Thumbprint.ToLowerInvariant()};productionAuthorized=(-not$AllowUnsignedRehearsal);createdAt=(Get-Date).ToUniversalTime().ToString('o')}
 $recordJson=$record|ConvertTo-Json -Depth 3
 $stream=[IO.File]::Open($buildRecordPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
 try{$writer=[IO.StreamWriter]::new($stream,[Text.UTF8Encoding]::new($false));$writer.Write($recordJson+"`n");$writer.Flush()}finally{if($writer){$writer.Dispose()}else{$stream.Dispose()}}

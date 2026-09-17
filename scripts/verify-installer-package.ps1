@@ -23,7 +23,7 @@ $recordPath=[IO.Path]::GetFullPath($BuildRecordPath)
 if(-not(Test-Path -LiteralPath $installer -PathType Leaf)){throw 'Installer executable was not found'}
 if(-not(Test-Path -LiteralPath $recordPath -PathType Leaf)){throw 'Installer build record was not found'}
 $record=Get-Content -LiteralPath $recordPath -Raw|ConvertFrom-Json
-if($record.format-ne'performance-tracker-installer-build-v8'){throw 'Version 8 installer provenance is required'}
+if($record.format-ne'performance-tracker-installer-build-v9'){throw 'Version 9 installer provenance is required'}
 $artifactDirectory=[IO.Path]::GetDirectoryName($installer)
 if([IO.Path]::GetDirectoryName($recordPath)-ne$artifactDirectory){throw 'Installer and provenance record must be adjacent'}
 foreach($fileName in @($record.installerFile,$record.recordFile)){
@@ -38,7 +38,7 @@ $actualInstallerHash=(Get-FileHash -LiteralPath $installer -Algorithm SHA256).Ha
 $recordInitialHash=(Get-FileHash -LiteralPath $recordPath -Algorithm SHA256).Hash.ToLowerInvariant()
 if($actualInstallerHash-ne$record.sha256){throw 'Installer executable hash does not match its provenance record'}
 if($AllowUnsignedRehearsal){
-  if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile-or$null-ne$record.installerSignerThumbprint-or$null-ne$record.timestampSignerThumbprint-or$null-ne$record.signToolSha256-or$null-ne$record.signToolSigner){throw 'Artifact is not a valid unsigned rehearsal bundle'}
+  if($record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'-or$null-ne$record.recordSignatureFile-or$null-ne$record.installerSignerThumbprint-or$null-ne$record.timestampSignerThumbprint-or$null-ne$record.signToolSha256-or$null-ne$record.signToolSigner-or$null-ne$record.releaseCandidateAttestationSha256-or$null-ne$record.releaseCandidateAttestationSignatureSha256){throw 'Artifact is not a valid unsigned rehearsal bundle'}
 } else {
   if($record.productionAuthorized-ne$true-or$record.authenticodeStatus-ne'Valid'){throw 'Installer provenance does not authorize production use'}
   if(-not$ApprovedInstallerSha256){throw 'The independently approved installer SHA-256 fingerprint is required'}
@@ -51,6 +51,7 @@ if($AllowUnsignedRehearsal){
   if($record.releaseCommit-ne$ApprovedReleaseCommit.ToLowerInvariant()){throw 'Installer source commit does not match the independently approved release'}
   if(-not$ApprovedReleaseId){throw 'The independently approved release identifier is required'}
   if($record.releaseId-ne$ApprovedReleaseId){throw 'Installer release identifier does not match the independently approved deployment'}
+  foreach($hash in @($record.releaseCandidateAttestationSha256,$record.releaseCandidateAttestationSignatureSha256)){if(([string]$hash)-notmatch'^[0-9a-f]{64}$'){throw 'Installer provenance does not bind a signed release candidate attestation'}}
   if($record.compilerSha256-ne$ApprovedCompilerSha256.ToLowerInvariant()){throw 'Installer compiler does not match the independently approved fingerprint'}
   if(-not$ApprovedSignToolSha256){throw 'The independently approved signtool.exe SHA-256 fingerprint is required'}
   if(-not$ApprovedReleasePublicKeySha256){throw 'The independently approved release public-key SHA-256 fingerprint is required'}

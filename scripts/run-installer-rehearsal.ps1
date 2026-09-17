@@ -35,7 +35,7 @@ foreach($path in @($installer,$recordPath,$publicKey)){
 }
 
 $record=Get-Content -LiteralPath $recordPath -Raw|ConvertFrom-Json
-if($record.format-ne'performance-tracker-installer-build-v8'-or$record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'){
+if($record.format-ne'performance-tracker-installer-build-v9'-or$record.productionAuthorized-ne$false-or$record.authenticodeStatus-ne'NotSigned'){
   throw 'This runner accepts only an explicitly unsigned, non-production rehearsal build record'
 }
 if($record.installerFile-ne[IO.Path]::GetFileName($installer)){throw 'Build record does not name the selected installer'}
