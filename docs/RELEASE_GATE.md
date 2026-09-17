@@ -86,3 +86,14 @@ this does not defend against concurrent malicious filesystem mutation.
 Every run writes `output/release-gates/release-gate-<UTC timestamp>.json` with the exact Git commit, branch, duration, and each check result. `CODE_ONLY_PASS` is useful during development but is not a deployable result. Only `PASS` may be attached to the release record.
 
 The System Authorizer reviews the full result, the attended acceptance record, the recent restoration rehearsal, open incidents, and rollback target before signing release approval. A failed or incomplete check cannot be converted to a pass by editing the JSON file; rerun the gate after remediation.
+
+## Continuous-integration parity
+
+The GitHub code-gate job installs dependencies with the same hoisted, copied
+layout required by the release build and invokes `release-gate.ps1 -CodeOnly`
+instead of independently repeating its build steps. This prevents CI from
+passing a linked dependency tree that the Windows release packager would later
+reject. The workflow retains the exact `CODE_ONLY_PASS` or `FAIL` JSON result as
+a 30-day build artifact bound to the Git commit. The artifact is engineering
+evidence only; it does not replace the full attended `PASS` record or System
+Authorizer approval.

@@ -25,9 +25,7 @@ jobs:
         run: .\scripts\deployment-regression-gate.ps1
   code-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      DATABASE_URL: postgresql://runtime:ci-only-password@127.0.0.1:5432/not_contacted_during_build
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -37,8 +35,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run accessibility:gate
+      - name: Install self-contained release dependencies
+        run: pnpm install --frozen-lockfile --node-linker=hoisted --package-import-method=copy
       - run: node --check scripts/browser-regression.mjs
       - run: node --check scripts/validate-production-env.mjs
       - run: node --test scripts/validate-production-env.test.mjs
@@ -81,16 +79,19 @@ jobs:
           $redacted=Protect-ApplicationLogLine $sample
           if($redacted -match 'db-password|abc\.def\.ghi|hunter2|topsecret'){throw 'A representative credential survived log redaction'}
           if(([regex]::Matches($redacted,'\[REDACTED\]')).Count -ne 4){throw 'Expected four redacted credential values'}
-      - run: pnpm run lint:progress:test
-      - run: pnpm run lint
-      - run: pnpm run typecheck
-      - run: pnpm test
       - name: Reject high or critical dependency vulnerabilities
         run: pnpm audit --audit-level high
-      - run: pnpm run build
-      - name: Prepare integrity-manifested standalone package
-        shell: pwsh
-        run: .\scripts\prepare-standalone.ps1
       - name: Release source provenance regression
         shell: pwsh
-        run: .\scripts\test-release-source-check.ps1
+        run: ./scripts/test-release-source-check.ps1
+      - name: Run the provenance-bound code release gate
+        shell: pwsh
+        run: ./scripts/release-gate.ps1 -CodeOnly
+      - name: Preserve the release-gate result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-release-gate-${{ github.sha }}
+          path: output/release-gates/*.json
+          if-no-files-found: error
+          retention-days: 30
