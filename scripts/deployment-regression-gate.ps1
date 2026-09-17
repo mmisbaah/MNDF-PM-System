@@ -34,7 +34,7 @@ try {
     }
   }
   Invoke-DeploymentRegression 'Package, signing and configuration Node regressions' {
-    & node --test scripts/health-contract.test.mjs scripts/materialize-standalone.test.mjs scripts/next-config.test.mjs scripts/release-build-provenance.test.mjs scripts/release-integrity.test.mjs scripts/release-signing.test.mjs scripts/validate-production-env.test.mjs scripts/workflow-action-pinning.test.mjs
+    & node --test scripts/health-contract.test.mjs scripts/materialize-standalone.test.mjs scripts/next-config.test.mjs scripts/release-build-provenance.test.mjs scripts/release-integrity.test.mjs scripts/release-signing.test.mjs scripts/validate-production-env.test.mjs scripts/verify-github-release-controls.test.mjs scripts/workflow-action-pinning.test.mjs
     if($LASTEXITCODE -ne 0){throw 'Node regression suite failed'}
   }
   Invoke-DeploymentRegression 'Signature self-test' {

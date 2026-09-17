@@ -1,0 +1,20 @@
+{
+  "format": "performance-tracker-release-branch-policy-v1",
+  "repository": "mmisbaah/MNDF-PM-System",
+  "branch": "main",
+  "requiredStatusChecks": [
+    "code-gate",
+    "windows-deployment-guards",
+    "Analyze JavaScript and TypeScript"
+  ],
+  "requireStrictStatusChecks": true,
+  "enforceAdministrators": true,
+  "minimumApprovingReviews": 1,
+  "dismissStaleReviews": true,
+  "requireLastPushApproval": true,
+  "requireConversationResolution": true,
+  "requireLinearHistory": true,
+  "requireSignedCommits": true,
+  "allowForcePushes": false,
+  "allowDeletions": false
+}
