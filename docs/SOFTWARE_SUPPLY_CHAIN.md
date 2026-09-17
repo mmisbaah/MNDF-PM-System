@@ -6,4 +6,11 @@ Every pull request and release-candidate push runs accessibility policy, browser
 
 Dependabot proposes weekly npm updates and monthly GitHub Actions updates. Each proposal requires human review, successful automated gates, and regression testing proportional to the affected component. Major-version updates remain separate and must include migration notes. Do not enable automatic merging or direct production deployment.
 
+All external GitHub Actions references are pinned to full 40-character commit
+hashes. A readable release comment accompanies each hash, while Dependabot
+remains responsible for proposing reviewed updates. The deployment regression
+gate rejects a mutable tag, branch, shortened hash, or malformed external action
+reference before release. Verify proposed hashes against the action's official
+repository and reviewed release before merging an update.
+
 Before release, the Technical Operator records the commit, lockfile hash, successful workflow run, open security findings, accepted-risk owner and expiry, and deployed artifact hash. Secrets, environment files, evidence, database exports, and backup keys must never be uploaded as workflow artifacts.
