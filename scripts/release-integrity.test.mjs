@@ -18,7 +18,7 @@ test('full inventory rejects modified, missing, added and unsafe package entries
     const helpers = ['start-production.ps1', 'application-log-redaction.ps1', 'validate-production-env.mjs'];
     for (const name of helpers) await writeFile(join(scriptsRoot, name), 'original');
     await mkdir(join(root, 'assets'));
-    for (const name of ['server.js', 'package.json', 'assets/client.js']) await writeFile(join(root, name), 'original');
+    for (const name of ['server.js', 'package.json', 'sbom.cdx.json', 'assets/client.js']) await writeFile(join(root, name), 'original');
     const manifest = { format: 'performance-tracker-release-package-v3', commit: 'a'.repeat(40), files: await inventory(root), scripts: await inventory(scriptsRoot, false) };
     await verifyPackage(root, manifest);
     await writeFile(join(root, 'release-manifest.json'), '{}');
@@ -76,7 +76,7 @@ test('CLI creation and verification require the release scripts and reject helpe
   try {
     await mkdir(standalone);
     await mkdir(scripts);
-    for (const name of ['server.js', 'package.json']) await writeFile(join(standalone, name), 'fixture');
+    for (const name of ['server.js', 'package.json', 'sbom.cdx.json']) await writeFile(join(standalone, name), 'fixture');
     for (const name of ['start-production.ps1', 'application-log-redaction.ps1', 'validate-production-env.mjs']) await writeFile(join(scripts, name), 'fixture');
     let result = run('create', standalone, scripts, 'b'.repeat(40));
     assert.equal(result.status, 0, result.stderr);

@@ -44,7 +44,7 @@ async function verifyTree(root, files, required, excludeMetadata) {
 export async function verifyPackage(root, manifest, scriptsRoot) {
   if (manifest.format !== 'performance-tracker-release-package-v3' || !/^[0-9a-f]{40}$/.test(manifest.commit)) throw new Error('A version 3 full-package manifest is required');
   if (!scriptsRoot) throw new Error('Release scripts directory required');
-  await verifyTree(root, manifest.files, ['server.js', 'package.json'], true);
+  await verifyTree(root, manifest.files, ['server.js', 'package.json', 'sbom.cdx.json'], true);
   await verifyTree(scriptsRoot, manifest.scripts, ['start-production.ps1', 'application-log-redaction.ps1', 'validate-production-env.mjs'], false);
 }
 

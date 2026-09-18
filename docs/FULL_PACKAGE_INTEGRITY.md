@@ -5,6 +5,14 @@ every file under `.next/standalone`, including dependencies, bundled server code
 public files and browser assets. Only the root manifest and detached signature
 are excluded, avoiding circular hashes. Nested files with those names are included.
 
+After dependency links are materialized, the release builder also inventories
+the actual packaged `package.json` files into `sbom.cdx.json` using CycloneDX
+1.6. The SBOM contains component names, versions, declared licenses, and package
+metadata hashes without local filesystem paths. It is created before the release
+manifest, is a mandatory inventory entry, and its SHA-256 is repeated in version
+10 installer provenance. A missing, replaced, linked-input, or post-generation
+modified SBOM therefore blocks integrity verification or installer packaging.
+
 A second required inventory covers **every file in the release's `scripts`
 directory**, including `start-production.ps1`, `application-log-redaction.ps1`,
 and `validate-production-env.mjs`. These three startup entry points are mandatory.

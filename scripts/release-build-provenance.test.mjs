@@ -15,7 +15,7 @@ test('receipt binds commit and exact build inventory; missing/stale/tampered rec
   const commit = 'a'.repeat(40);
   try {
     await mkdir(standalone, { recursive: true }); await mkdir(scripts);
-    for (const file of ['server.js', 'package.json']) await writeFile(join(standalone, file), 'original');
+    for (const file of ['server.js', 'package.json', 'sbom.cdx.json']) await writeFile(join(standalone, file), 'original');
     for (const file of ['start-production.ps1', 'application-log-redaction.ps1', 'validate-production-env.mjs']) await writeFile(join(scripts, file), 'original');
     const manifest = { format: 'performance-tracker-release-package-v3', commit, files: await inventory(standalone), scripts: await inventory(scripts, false) };
     const manifestPath = join(standalone, 'release-manifest.json');
@@ -49,7 +49,7 @@ test('real release orchestration rejects failed, reused and changed-source build
     await mkdir(join(root, 'scripts')); await mkdir(join(root, 'public')); await mkdir(join(root, 'node_modules'));
     await copyFile(fileURLToPath(new URL('../.gitignore', import.meta.url)), join(root, '.gitignore'));
     await writeFile(join(root, 'public', 'asset.txt'), 'public');
-    for (const file of ['release-build.ps1','prepare-standalone.ps1','release-source-check.ps1','release-integrity.mjs','release-build-provenance.mjs','materialize-standalone.mjs']) {
+    for (const file of ['release-build.ps1','prepare-standalone.ps1','release-source-check.ps1','release-integrity.mjs','release-build-provenance.mjs','materialize-standalone.mjs','generate-runtime-sbom.mjs']) {
       await copyFile(fileURLToPath(new URL(file, import.meta.url)), join(root, 'scripts', file));
     }
     for (const file of ['start-production.ps1','application-log-redaction.ps1','validate-production-env.mjs']) await writeFile(join(root, 'scripts', file), 'fixture');
@@ -59,7 +59,7 @@ test('real release orchestration rejects failed, reused and changed-source build
     let result = ps('function npm {$global:LASTEXITCODE=1}; & ./scripts/release-build.ps1');
     assert.notEqual(result.status, 0);
     await assert.rejects(readFile(join(root,'.next','release-build-provenance.json')), /ENOENT/);
-    const fakeBuild = "function npm {New-Item -ItemType Directory -Force .next/standalone,.next/static | Out-Null; [IO.File]::WriteAllText((Join-Path (Get-Location) 'next-env.d.ts'),'// generated Next.js declarations'); [IO.File]::WriteAllText((Join-Path (Get-Location) '.next/standalone/server.js'),'fixture'); [IO.File]::WriteAllText((Join-Path (Get-Location) '.next/standalone/package.json'),'{}'); $global:LASTEXITCODE=0};";
+    const fakeBuild = "function npm {New-Item -ItemType Directory -Force .next/standalone,.next/static | Out-Null; [IO.File]::WriteAllText((Join-Path (Get-Location) 'next-env.d.ts'),'// generated Next.js declarations'); [IO.File]::WriteAllText((Join-Path (Get-Location) '.next/standalone/server.js'),'fixture'); [IO.File]::WriteAllText((Join-Path (Get-Location) '.next/standalone/package.json'),'{\"name\":\"performance-tracker\",\"version\":\"0.1.0\"}'); $global:LASTEXITCODE=0};";
     result = ps(fakeBuild + '& ./scripts/release-build.ps1; & ./scripts/prepare-standalone.ps1');
     assert.equal(result.status, 0, result.stdout + result.stderr);
     result = ps(fakeBuild + '& ./scripts/release-build.ps1');

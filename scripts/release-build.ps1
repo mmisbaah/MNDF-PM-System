@@ -28,6 +28,8 @@ try {
   }
   & node (Join-Path $PSScriptRoot 'materialize-standalone.mjs') materialize $project
   if($LASTEXITCODE -ne 0){throw 'Standalone dependency materialization failed; raw build preserved'}
+  & node (Join-Path $PSScriptRoot 'generate-runtime-sbom.mjs') $standalone $commit
+  if($LASTEXITCODE -ne 0){throw 'Runtime SBOM generation failed'}
   & node (Join-Path $PSScriptRoot 'release-integrity.mjs') create $standalone (Join-Path $project 'scripts') $commit
   if($LASTEXITCODE -ne 0){throw 'Build inventory creation failed'}
   if((Get-CleanReleaseCommit $project) -ne $commit){throw 'Source changed while build inventory was captured'}

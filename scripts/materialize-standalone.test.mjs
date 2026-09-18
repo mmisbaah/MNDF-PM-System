@@ -27,6 +27,12 @@ test('materializes aliases, resolves dependencies without checkout, detects tamp
   await writeFile(join(app, 'node_modules', 'child', 'index.js'), 'module.exports = 42;');
   await link(join(deps, 'real'), join(app, 'node_modules', 'alias'));
   assert.equal((await materializeStandalone(root)).links, 1);
+  await writeFile(join(app, 'sbom.cdx.json'), JSON.stringify({
+    bomFormat: 'CycloneDX',
+    specVersion: '1.6',
+    metadata: { component: { type: 'application', name: 'performance-tracker', version: '0.1.0' } },
+    components: [],
+  }));
   const files = await inventory(app);
   await rename(deps, join(root, 'dependencies-hidden'));
   const result = spawnSync(process.execPath, ['-e', 'if(require(process.argv[1])!==42)process.exit(1)', join(app, 'server.js')], { encoding: 'utf8' });

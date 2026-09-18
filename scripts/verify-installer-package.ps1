@@ -23,14 +23,14 @@ $recordPath=[IO.Path]::GetFullPath($BuildRecordPath)
 if(-not(Test-Path -LiteralPath $installer -PathType Leaf)){throw 'Installer executable was not found'}
 if(-not(Test-Path -LiteralPath $recordPath -PathType Leaf)){throw 'Installer build record was not found'}
 $record=Get-Content -LiteralPath $recordPath -Raw|ConvertFrom-Json
-if($record.format-ne'performance-tracker-installer-build-v9'){throw 'Version 9 installer provenance is required'}
+if($record.format-ne'performance-tracker-installer-build-v10'){throw 'Version 10 installer provenance is required'}
 $artifactDirectory=[IO.Path]::GetDirectoryName($installer)
 if([IO.Path]::GetDirectoryName($recordPath)-ne$artifactDirectory){throw 'Installer and provenance record must be adjacent'}
 foreach($fileName in @($record.installerFile,$record.recordFile)){
   if([string]::IsNullOrWhiteSpace([string]$fileName)-or[IO.Path]::GetFileName([string]$fileName)-ne$fileName){throw 'Installer provenance contains an unsafe artifact filename'}
 }
 if($record.installerFile-ne[IO.Path]::GetFileName($installer)-or$record.recordFile-ne[IO.Path]::GetFileName($recordPath)){throw 'Installer provenance filenames do not match the supplied artifacts'}
-foreach($hash in @($record.sha256,$record.compilerSha256,$record.nodeRuntimeSha256,$record.releasePublicKeySha256,$record.productionHelperAllowlistSha256)){
+foreach($hash in @($record.sha256,$record.compilerSha256,$record.nodeRuntimeSha256,$record.releasePublicKeySha256,$record.productionHelperAllowlistSha256,$record.runtimeSbomSha256)){
   if(([string]$hash)-notmatch'^[0-9a-f]{64}$'){throw 'Installer provenance contains an invalid fingerprint'}
 }
 if(([string]$record.releaseCommit)-notmatch'^[0-9a-f]{40}$'){throw 'Installer provenance contains an invalid source commit'}
